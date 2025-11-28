@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'pages/home_page.dart';
-import 'pages/friends_page.dart';
+//import 'pages/friends_page.dart';
 
 void main() {
   runApp(const MyApp());
@@ -17,7 +17,7 @@ class MyApp extends StatelessWidget {
       initialRoute: '/',
       routes: {
         '/': (context) => const HomePage(),
-        '/friends': (context) => const FriendsPage(),
+        //'/friends': (context) => const FriendsPage(),
       },
     );
   }
