@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
+import 'pages/home_page.dart';
+import 'pages/friends_page.dart';
 
 void main() {
   runApp(MaterialApp(
-    home: Scaffold(
-      appBar: AppBar(title: Text("FriendMap")),
-      body: Center(
-        child: Text("Hello FriendMap!"),
-      ),
-    ),
+    home: const HomePage(),  
+    routes: {
+      '/friends': (context) => const FriendsPage(),
+    },
   ));
 }
