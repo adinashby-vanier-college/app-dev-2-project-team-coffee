@@ -1,4 +1,4 @@
-package com.example.friendmap_project
+package ca.vanier.friendmap
 
 import io.flutter.embedding.android.FlutterActivity
 
