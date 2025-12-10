@@ -1,15 +1,11 @@
-import 'package:flutter/material.dart';
-import 'pages/home_page.dart';
-import 'pages/friends_page.dart';
-import 'pages/chat_page.dart';
+import 'bootstrap.dart';
+import 'config/app_config.dart';
 
 void main() {
-  runApp(MaterialApp(
-    home: const FriendsPage(),
-    routes: {
-      '/friends': (context) => const FriendsPage(),
-      '/friend': (context) => const ChatPage(),
-      '/home': (context) => const HomePage(),
-    },
-  ));
+  final env = AppEnvironmentX.from(
+    const String.fromEnvironment('ENV', defaultValue: 'prod'),
+    fallback: AppEnvironment.prod,
+  );
+
+  bootstrap(env);
 }

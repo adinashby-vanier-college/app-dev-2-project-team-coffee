@@ -6,9 +6,7 @@ class ChatPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("FriendMap Chat"),
-      ),
+      appBar: AppBar(title: const Text("FriendMap Chat")),
       body: Center(
         child: ElevatedButton(
           onPressed: () {
@@ -20,4 +18,3 @@ class ChatPage extends StatelessWidget {
     );
   }
 }
-

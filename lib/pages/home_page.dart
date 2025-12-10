@@ -6,9 +6,7 @@ class HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("FriendMap Home"),
-      ),
+      appBar: AppBar(title: const Text("FriendMap Home")),
       body: Center(
         child: ElevatedButton(
           onPressed: () {

@@ -28,6 +28,22 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        manifestPlaceholders["appName"] = "Friendmap"
+    }
+
+    flavorDimensions += "env"
+
+    productFlavors {
+        create("dev") {
+            dimension = "env"
+            applicationIdSuffix = ".dev"
+            versionNameSuffix = "-dev"
+            manifestPlaceholders["appName"] = "Friendmap Dev"
+        }
+        create("prod") {
+            dimension = "env"
+            manifestPlaceholders["appName"] = "Friendmap"
+        }
     }
 
     buildTypes {
