@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "680993210456",
+    "project_id": "friendmap-5b654",
+    "storage_bucket": "friendmap-5b654.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:680993210456:android:94ad0b1652fb9dc76a0a2d",
+        "android_client_info": {
+          "package_name": "ca.vanier.friendmap"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAxjxng0mK7XCdrNKcj5YIQsqEdYFW4SO8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
