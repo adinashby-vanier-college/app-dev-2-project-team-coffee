@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import 'config/app_config.dart';
 import 'pages/chat_page.dart';
 import 'pages/friends_page.dart';
 import 'pages/home_page.dart';
+import 'providers/auth_provider.dart';
 
 class FriendmapApp extends StatelessWidget {
   final AppConfig config;
@@ -12,15 +14,20 @@ class FriendmapApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: config.appName,
-      debugShowCheckedModeBanner: !config.environment.isProd,
-      home: const FriendsPage(),
-      routes: {
-        '/friends': (context) => const FriendsPage(),
-        '/friend': (context) => const ChatPage(),
-        '/home': (context) => const HomePage(),
-      },
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
+      ],
+      child: MaterialApp(
+        title: config.appName,
+        debugShowCheckedModeBanner: !config.environment.isProd,
+        home: const FriendsPage(),
+        routes: {
+          '/friends': (context) => const FriendsPage(),
+          '/friend': (context) => const ChatPage(),
+          '/home': (context) => const HomePage(),
+        },
+      ),
     );
   }
 }
