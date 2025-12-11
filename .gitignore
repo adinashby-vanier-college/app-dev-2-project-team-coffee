@@ -4,6 +4,7 @@
 *.pyc
 *.swp
 .DS_Store
+.metadata
 .atom/
 .build/
 .buildlog/
@@ -27,11 +28,14 @@ migrate_working_dir/
 **/doc/api/
 **/ios/Flutter/.last_build_id
 .dart_tool/
+.flutter-plugins
 .flutter-plugins-dependencies
 .pub-cache/
 .pub/
 /build/
 /coverage/
+.flutter-versions
+.packages
 
 # Symbolication related
 app.*.symbols
@@ -43,3 +47,40 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Firebase configs and local env (keep out of git)
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
+macos/Runner/GoogleService-Info.plist
+lib/firebase_options.dart
+.env*
+firebase.json
+
+# iOS/macOS generated
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+ios/Flutter/Generated.xcconfig
+ios/Flutter/flutter_export_environment.sh
+ios/Pods/
+ios/Runner.xcworkspace/
+**/*.xcuserstate
+**/*.xcuserdata/
+macos/Flutter/*.xcconfig
+macos/Flutter/GeneratedPluginRegistrant.swift
+macos/Runner.xcworkspace/
+
+# Android local/machine
+android/local.properties
+**/*.keystore
+**/*.jks
+
+# Desktop generated
+linux/flutter/generated_*
+windows/flutter/generated_*
+web/.dart_tool/
+web/build/
+
+# IDE/editor
+.idea/
+.vscode/
+*.iml
