@@ -49,21 +49,6 @@ android {
         checkReleaseBuilds = false
     }
 
-    flavorDimensions += "env"
-
-    productFlavors {
-        create("dev") {
-            dimension = "env"
-            applicationIdSuffix = ".dev"
-            versionNameSuffix = "-dev"
-            manifestPlaceholders["appName"] = "Friendmap Dev"
-        }
-        create("prod") {
-            dimension = "env"
-            manifestPlaceholders["appName"] = "Friendmap"
-        }
-    }
-
     buildTypes {
         release {
             // TODO: Add your own signing config for the release build.

@@ -11,22 +11,11 @@ class FriendsPage extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('${config.appName} (${config.environment.name})'),
+        title: Text(config.appName),
       ),
       body: ListView(
         padding: const EdgeInsets.all(16.0),
         children: [
-          Card(
-            child: ListTile(
-              leading: const Icon(Icons.settings),
-              title: Text(
-                'Environment: ${config.environment.name.toUpperCase()}',
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-              subtitle: Text('API Base URL: ${config.apiBaseUrl}'),
-            ),
-          ),
-          const SizedBox(height: 12),
           const ListTile(
             leading: CircleAvatar(child: Text('A')),
             title: Text('Alice'),

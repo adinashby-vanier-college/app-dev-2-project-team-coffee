@@ -1,86 +1,46 @@
-# Miscellaneous
-*.class
-*.log
-*.pyc
-*.swp
-.DS_Store
-.metadata
-.atom/
-.build/
-.buildlog/
-.history
-.svn/
-.swiftpm/
-migrate_working_dir/
-
-# IntelliJ related
-*.iml
-*.ipr
-*.iws
-.idea/
-
-# The .vscode folder contains launch configuration and tasks you configure in
-# VS Code which you may wish to be included in version control, so this line
-# is commented out by default.
-#.vscode/
-
-# Flutter/Dart/Pub related
-**/doc/api/
-**/ios/Flutter/.last_build_id
+# Flutter / Dart / tooling
 .dart_tool/
 .flutter-plugins
 .flutter-plugins-dependencies
-.pub-cache/
-.pub/
-/build/
-/coverage/
-.flutter-versions
 .packages
-
-# Symbolication related
-app.*.symbols
-
-# Obfuscation related
-app.*.map.json
-
-# Android Studio will place build artifacts here
-/android/app/debug
-/android/app/profile
-/android/app/release
-
-# Firebase configs and local env (keep out of git)
-android/app/google-services.json
-ios/Runner/GoogleService-Info.plist
-macos/Runner/GoogleService-Info.plist
-lib/firebase_options.dart
-.env*
-firebase.json
-
-# iOS/macOS generated
-ios/Flutter/Flutter.framework
-ios/Flutter/Flutter.podspec
-ios/Flutter/Generated.xcconfig
-ios/Flutter/flutter_export_environment.sh
-ios/Pods/
-ios/Runner.xcworkspace/
-**/*.xcuserstate
-**/*.xcuserdata/
-macos/Flutter/*.xcconfig
-macos/Flutter/GeneratedPluginRegistrant.swift
-macos/Runner.xcworkspace/
-
-# Android local/machine
-android/local.properties
-**/*.keystore
-**/*.jks
-
-# Desktop generated
-linux/flutter/generated_*
-windows/flutter/generated_*
-web/.dart_tool/
-web/build/
-
-# IDE/editor
+.fvm/
+.pub-cache/
 .idea/
 .vscode/
-*.iml
+.classpath
+.project
+.settings/
+
+# Build artifacts (all platforms)
+build/
+**/build/
+**/.gradle/
+**/local.properties
+.gradle/
+
+# iOS / macOS
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/Flutter.podspec
+macos/Pods/
+macos/Flutter/ephemeral/
+**/xcuserdata/
+**/DerivedData/
+
+# Platform-specific junk
+.DS_Store
+Thumbs.db
+*.log
+
+# Firebase configs
+google-services.json
+**/GoogleService-Info.plist
+
+# Android signing keys
+key.properties
+*.jks
+*.keystore
+
+# Env + secret files
+.env
+lib/secrets.dart
