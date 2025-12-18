@@ -21,9 +21,46 @@ class FriendsPage extends StatelessWidget {
     }
   }
 
+  /// Checks if friends are loaded from Firebase database
+  /// Returns false until Firebase friends collection integration is implemented
+  bool _areFriendsLoadedFromDatabase() {
+    // TODO: Implement Firebase friends collection check
+    // This will check if the logged-in user has friends loaded from Firebase
+    return false;
+  }
+
+  /// Returns fallback friends when database collection is not loaded
+  /// This serves as visual error handling for missing Firebase integration
+  List<String> _getFallbackFriends() {
+    return ['friend1', 'friend2', 'friend3'];
+  }
+
+  /// Builds a ListTile widget for a friend
+  Widget _buildFriendTile(String friendName) {
+    final initial = friendName.isNotEmpty ? friendName[0].toUpperCase() : '?';
+    return ListTile(
+      leading: CircleAvatar(
+        child: Text(initial),
+      ),
+      title: Text(friendName),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final config = AppConfigScope.of(context);
+    // Check if friends are loaded from database
+    final areFriendsLoaded = _areFriendsLoadedFromDatabase();
+
+    // Get friends list - either from database or fallback
+    final List<String> friendsList;
+    if (areFriendsLoaded) {
+      // TODO: Get friends from Firebase collection for logged-in user
+      friendsList = []; // Placeholder for future Firebase integration
+    } else {
+      // Show fallback friends as visual error handling
+      friendsList = _getFallbackFriends();
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -31,23 +68,9 @@ class FriendsPage extends StatelessWidget {
       ),
       body: ListView(
         padding: const EdgeInsets.all(16.0),
-        children: [
-          const ListTile(
-            leading: CircleAvatar(child: Text('A')),
-            title: Text('Alice'),
-            subtitle: Text('Best friend'),
-          ),
-          ListTile(
-            leading: CircleAvatar(child: Text('B')),
-            title: Text('Bob'),
-            subtitle: Text('Colleague'),
-          ),
-          ListTile(
-            leading: CircleAvatar(child: Text('C')),
-            title: Text('Charlie'),
-            subtitle: Text('Gym buddy'),
-          ),
-        ],
+        children: friendsList
+            .map((friend) => _buildFriendTile(friend))
+            .toList(),
       ),
       bottomNavigationBar: NavBar(
         currentIndex: 1, // Friends is at index 1

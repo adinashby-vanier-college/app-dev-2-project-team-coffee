@@ -24,12 +24,10 @@ class ChatPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text("FriendMap Chat")),
-      body: Center(
-        child: ElevatedButton(
-          onPressed: () {
-            Navigator.pop(context);
-          },
-          child: const Text('Go Back'),
+      body: const Center(
+        child: Text(
+          'Chat',
+          style: TextStyle(fontSize: 24),
         ),
       ),
       bottomNavigationBar: NavBar(
