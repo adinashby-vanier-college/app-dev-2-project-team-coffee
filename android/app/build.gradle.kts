@@ -4,7 +4,7 @@ plugins {
     id("com.android.application")
     id("kotlin-android")
     id("dev.flutter.flutter-gradle-plugin")
-    id("com.google.gms.google-services") apply false
+    id("com.google.gms.google-services")
 
     }
 
@@ -21,7 +21,7 @@ dependencies {
 android {
     namespace = "ca.vanier.friendmap"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    // ndkVersion = flutter.ndkVersion  // Commented out to fix corrupted NDK issue
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
