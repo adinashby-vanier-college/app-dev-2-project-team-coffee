@@ -11,6 +11,8 @@ import 'providers/auth_provider.dart';
 import 'providers/phone_auth_provider.dart';
 import 'services/phone_auth_service.dart';
 
+import 'pages/landing_page.dart';
+
 class FriendmapApp extends StatelessWidget {
   final AppConfig config;
 
@@ -27,7 +29,7 @@ class FriendmapApp extends StatelessWidget {
       child: MaterialApp(
         title: config.appName,
         debugShowCheckedModeBanner: !config.environment.isProd,
-        home: const FriendsPage(),
+        home: const LandingPage(),
         routes: {
           '/friends': (context) => const FriendsPage(),
           '/friend': (context) => const ChatPage(),
