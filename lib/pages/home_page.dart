@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../widgets/nav_bar.dart';
+import '../widgets/css_map_widget.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -24,7 +25,7 @@ class HomePage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text("FriendMap Home")),
-      body: const SizedBox(),
+      body: const CssMapWidget(),
       bottomNavigationBar: NavBar(
         currentIndex: 0, // Home is at index 0
         onTap: (index) => _onNavBarTap(context, index),
