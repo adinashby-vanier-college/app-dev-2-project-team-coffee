@@ -1,9 +1,25 @@
 import 'package:flutter/material.dart';
 
 import '../config/app_config.dart';
+import '../widgets/nav_bar.dart';
 
 class FriendsPage extends StatelessWidget {
   const FriendsPage({Key? key}) : super(key: key);
+
+  void _onNavBarTap(BuildContext context, int index) {
+    // Navigate based on selected index
+    switch (index) {
+      case 0:
+        Navigator.pushReplacementNamed(context, '/home');
+        break;
+      case 1:
+        // Already on Friends, no navigation needed
+        break;
+      case 2:
+        Navigator.pushReplacementNamed(context, '/friend');
+        break;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -32,6 +48,10 @@ class FriendsPage extends StatelessWidget {
             subtitle: Text('Gym buddy'),
           ),
         ],
+      ),
+      bottomNavigationBar: NavBar(
+        currentIndex: 1, // Friends is at index 1
+        onTap: (index) => _onNavBarTap(context, index),
       ),
     );
   }
