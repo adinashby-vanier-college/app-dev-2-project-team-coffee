@@ -35,7 +35,7 @@ class _LandingPageState extends State<LandingPage> {
       }
       
       if (mounted) {
-        Navigator.pushReplacementNamed(context, '/friends');
+        Navigator.pushReplacementNamed(context, '/home');
       }
     } catch (e) {
       if (mounted) {

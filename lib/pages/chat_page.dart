@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../widgets/nav_bar.dart';
+import '../widgets/user_menu_widget.dart';
 
 class ChatPage extends StatelessWidget {
   const ChatPage({super.key});
@@ -24,6 +25,12 @@ class ChatPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        actions: const [
+          Padding(
+            padding: EdgeInsets.only(right: 8.0),
+            child: UserMenuWidget(),
+          ),
+        ],
         title: Padding(
           padding: const EdgeInsets.only(top: 8.0),
           child: Image.asset(

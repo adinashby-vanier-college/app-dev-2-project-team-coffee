@@ -7,6 +7,7 @@ import '../providers/auth_provider.dart';
 import '../services/friends_service.dart' show FriendsService, FriendRequest;
 import '../services/user_profile_service.dart';
 import '../widgets/nav_bar.dart';
+import '../widgets/user_menu_widget.dart';
 
 class FriendsPage extends StatefulWidget {
   const FriendsPage({Key? key}) : super(key: key);
@@ -218,6 +219,12 @@ class _FriendsPageState extends State<FriendsPage> {
 
     return Scaffold(
       appBar: AppBar(
+        actions: const [
+          Padding(
+            padding: EdgeInsets.only(right: 8.0),
+            child: UserMenuWidget(),
+          ),
+        ],
         title: Padding(
           padding: const EdgeInsets.only(top: 8.0),
           child: Image.asset(

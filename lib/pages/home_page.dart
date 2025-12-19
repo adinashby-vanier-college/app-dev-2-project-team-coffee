@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../widgets/nav_bar.dart';
 import '../widgets/css_map_widget.dart';
+import '../widgets/user_menu_widget.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -25,6 +26,12 @@ class HomePage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        actions: const [
+          Padding(
+            padding: EdgeInsets.only(right: 8.0),
+            child: UserMenuWidget(),
+          ),
+        ],
         title: Padding(
           padding: const EdgeInsets.only(top: 8.0),
           child: Image.asset(

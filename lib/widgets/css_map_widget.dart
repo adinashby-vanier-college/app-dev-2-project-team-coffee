@@ -80,9 +80,6 @@ class _CssMapWidgetState extends State<CssMapWidget>
         
         // Map Markers
         ...locations.map((loc) => _buildMarker(context, loc)),
-        
-        // Mock Home Indicator (minimalist touch)
-        _buildHomeIndicator(context),
       ],
     );
   }
@@ -294,20 +291,6 @@ class _CssMapWidgetState extends State<CssMapWidget>
     );
   }
 
-  Widget _buildHomeIndicator(BuildContext context) {
-    return Positioned(
-      bottom: 8,
-      left: MediaQuery.of(context).size.width * 0.5 - 64,
-      child: Container(
-        width: 128,
-        height: 4,
-        decoration: BoxDecoration(
-          color: Colors.black.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(2),
-        ),
-      ),
-    );
-  }
 }
 
 /// Custom painter for grid pattern
