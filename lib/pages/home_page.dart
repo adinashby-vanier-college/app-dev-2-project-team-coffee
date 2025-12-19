@@ -24,7 +24,17 @@ class HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("FriendMap Home")),
+      appBar: AppBar(
+        title: Padding(
+          padding: const EdgeInsets.only(top: 8.0),
+          child: Image.asset(
+            'lib/assets/FriendMap.png',
+            height: 25,
+            fit: BoxFit.contain,
+          ),
+        ),
+        centerTitle: false,
+      ),
       body: const CssMapWidget(),
       bottomNavigationBar: NavBar(
         currentIndex: 0, // Home is at index 0

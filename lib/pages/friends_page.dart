@@ -218,7 +218,15 @@ class _FriendsPageState extends State<FriendsPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(config.appName),
+        title: Padding(
+          padding: const EdgeInsets.only(top: 8.0),
+          child: Image.asset(
+            'lib/assets/FriendMap.png',
+            height: 25,
+            fit: BoxFit.contain,
+          ),
+        ),
+        centerTitle: false,
       ),
       body: Column(
         children: [

@@ -78,11 +78,26 @@ class FriendsService {
       throw Exception('Friend request already received from this user');
     }
 
+    // Check if target user exists in Firestore
+    final targetUserDoc = await _firestore
+        .collection('users')
+        .doc(toUid)
+        .get();
+    
+    if (!targetUserDoc.exists) {
+      throw Exception('User not found. The user may need to sign in to create their profile.');
+    }
+
     // Check if they are already friends
     final currentUserDoc = await _firestore
         .collection('users')
         .doc(currentUser.uid)
         .get();
+    
+    if (!currentUserDoc.exists) {
+      throw Exception('Your profile is not set up. Please sign out and sign in again.');
+    }
+    
     final friendsList = currentUserDoc.data()?['friends'] as List<dynamic>? ?? [];
     if (friendsList.contains(toUid)) {
       throw Exception('Already friends');
@@ -129,7 +144,7 @@ class FriendsService {
     // Use batch write to ensure atomicity
     final batch = _firestore.batch();
 
-    // Update request status
+    // Update request status to accepted
     batch.update(
       _firestore.collection('friendRequests').doc(requestId),
       {'status': 'accepted'},
@@ -151,7 +166,11 @@ class FriendsService {
       },
     );
 
-    await batch.commit();
+    try {
+      await batch.commit();
+    } catch (e) {
+      throw Exception('Failed to accept friend request: $e');
+    }
   }
 
   /// Declines a friend request.

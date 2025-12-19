@@ -23,7 +23,17 @@ class ChatPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("FriendMap Chat")),
+      appBar: AppBar(
+        title: Padding(
+          padding: const EdgeInsets.only(top: 8.0),
+          child: Image.asset(
+            'lib/assets/FriendMap.png',
+            height: 25,
+            fit: BoxFit.contain,
+          ),
+        ),
+        centerTitle: false,
+      ),
       body: const Center(
         child: Text(
           'Chat',

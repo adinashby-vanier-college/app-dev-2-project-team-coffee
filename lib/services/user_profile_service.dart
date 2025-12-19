@@ -20,7 +20,7 @@ class UserProfileService {
     if (!userDoc.exists) {
       await userDocRef.set({
         'uid': user.uid,
-        'email': user.email ?? '',
+        'email': (user.email ?? '').toLowerCase(), // Store lowercase for consistent searching
         'name': user.displayName ?? '',
         'createdAt': FieldValue.serverTimestamp(),
         'friends': <String>[],
@@ -75,18 +75,45 @@ class UserProfileService {
       return [];
     }
 
-    // Firestore doesn't support case-insensitive search, so we search for exact matches
-    // or use a prefix search. For simplicity, we'll search for emails that start with the query.
-    final query = _firestore
-        .collection('users')
-        .where('email', isGreaterThanOrEqualTo: emailQuery)
-        .where('email', isLessThan: emailQuery + '\uf8ff')
-        .limit(10);
+    try {
+      // Firestore doesn't support case-insensitive search, so we search for exact matches
+      // or use a prefix search. For simplicity, we'll search for emails that start with the query.
+      // Convert to lowercase for case-insensitive matching
+      final lowerQuery = emailQuery.toLowerCase();
+      final query = _firestore
+          .collection('users')
+          .where('email', isGreaterThanOrEqualTo: lowerQuery)
+          .where('email', isLessThan: lowerQuery + '\uf8ff')
+          .limit(10);
 
-    final snapshot = await query.get();
-    return snapshot.docs
-        .where((doc) => doc.id != currentUser.uid) // Exclude current user
-        .map((doc) => UserModel.fromFirestore(doc.data()!, doc.id))
-        .toList();
+      final snapshot = await query.get();
+      return snapshot.docs
+          .where((doc) => doc.id != currentUser.uid) // Exclude current user
+          .map((doc) => UserModel.fromFirestore(doc.data()!, doc.id))
+          .toList();
+    } catch (e) {
+      // If range query fails (needs index), try a simpler approach
+      // Get all users and filter in memory (not ideal for large datasets, but works)
+      try {
+        final snapshot = await _firestore
+            .collection('users')
+            .limit(50) // Limit to prevent loading too many
+            .get();
+        
+        final lowerQuery = emailQuery.toLowerCase();
+        return snapshot.docs
+            .where((doc) {
+              final data = doc.data();
+              final email = (data['email'] as String? ?? '').toLowerCase();
+              return doc.id != currentUser.uid && 
+                     email.contains(lowerQuery);
+            })
+            .map((doc) => UserModel.fromFirestore(doc.data(), doc.id))
+            .take(10)
+            .toList();
+      } catch (fallbackError) {
+        throw Exception('Search failed: $e (fallback also failed: $fallbackError)');
+      }
+    }
   }
 }

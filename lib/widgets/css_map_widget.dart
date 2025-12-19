@@ -132,11 +132,11 @@ class _CssMapWidgetState extends State<CssMapWidget>
               ),
             ),
           ),
-          Transform.rotate(
-            angle: 12 * math.pi / 180,
-            child: Positioned(
-              top: MediaQuery.of(context).size.height * 0.25 - 16,
-              left: 0,
+          Positioned(
+            top: MediaQuery.of(context).size.height * 0.25 - 16,
+            left: 0,
+            child: Transform.rotate(
+              angle: 12 * math.pi / 180,
               child: Container(
                 width: MediaQuery.of(context).size.width,
                 height: 32,
@@ -152,11 +152,11 @@ class _CssMapWidgetState extends State<CssMapWidget>
               ),
             ),
           ),
-          Transform.rotate(
-            angle: -6 * math.pi / 180,
-            child: Positioned(
-              bottom: MediaQuery.of(context).size.height * 0.25 - 24,
-              left: 0,
+          Positioned(
+            bottom: MediaQuery.of(context).size.height * 0.25 - 24,
+            left: 0,
+            child: Transform.rotate(
+              angle: -6 * math.pi / 180,
               child: Container(
                 width: MediaQuery.of(context).size.width,
                 height: 48,
