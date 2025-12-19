@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import '../models/user_model.dart';
 import '../services/auth_service.dart';
+import '../services/user_profile_service.dart';
 
 class AuthProvider with ChangeNotifier {
   final AuthService _authService = AuthService();
+  final UserProfileService _userProfileService = UserProfileService();
   UserModel? _user;
   bool _isLoading = false;
 
@@ -11,8 +13,17 @@ class AuthProvider with ChangeNotifier {
   bool get isLoading => _isLoading;
 
   AuthProvider() {
-    _authService.authStateChanges.listen((UserModel? user) {
+    _authService.authStateChanges.listen((UserModel? user) async {
       _user = user;
+      if (user != null) {
+        // Ensure user document exists in Firestore
+        try {
+          await _userProfileService.ensureUserDocumentExists();
+        } catch (e) {
+          // Log error but don't block authentication
+          debugPrint('Error ensuring user document: $e');
+        }
+      }
       notifyListeners();
     });
   }
