@@ -49,7 +49,8 @@ class _ProfilePageState extends State<ProfilePage> {
   String? _nameError;
   bool _nameLengthLimitHit = false;
   late TextEditingController _nameController;
-  static final RegExp _nameRegex = RegExp(r'^[a-zA-Z0-9]+$');
+  // Letters, numbers, and spaces only. Spacing rules are enforced separately.
+  static final RegExp _nameRegex = RegExp(r'^[a-zA-Z0-9 ]+$');
 
   @override
   void initState() {
@@ -86,20 +87,49 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   bool get _isNameValid {
-    final value = _nameController.text.trim();
-    return value.isNotEmpty && value.length <= 16 && _nameRegex.hasMatch(value);
+    final value = _nameController.text;
+    final trimmed = value.trim();
+
+    if (trimmed.isEmpty || trimmed.length > 16) {
+      return false;
+    }
+
+    // Only letters, numbers and spaces allowed in the raw value
+    if (trimmed.isNotEmpty && !_nameRegex.hasMatch(value)) {
+      return false;
+    }
+
+    // Spacing rule: no leading/trailing spaces and no double spaces
+    if (_hasSpacingIssue(value)) {
+      return false;
+    }
+
+    return true;
+  }
+
+  bool _hasSpacingIssue(String value) {
+    if (value.isEmpty) return false;
+    if (value.startsWith(' ') || value.endsWith(' ')) return true;
+    if (value.contains('  ')) return true; // double space anywhere
+    return false;
   }
 
   String? _buildNameErrorText() {
-    final value = _nameController.text.trim();
-    final bool hasInvalidChars = value.isNotEmpty && !_nameRegex.hasMatch(value);
-    final bool isTooLong = _nameLengthLimitHit;
+    final raw = _nameController.text;
+    final trimmed = raw.trim();
+    final bool hasInvalidChars =
+        trimmed.isNotEmpty && !_nameRegex.hasMatch(raw);
+    final bool isTooLong = _nameLengthLimitHit || trimmed.length > 16;
+    final bool hasSpacingIssue = _hasSpacingIssue(raw);
 
-    if (!hasInvalidChars && !isTooLong) return null;
+    if (!hasInvalidChars && !isTooLong && !hasSpacingIssue) return null;
 
     final parts = <String>[];
     if (hasInvalidChars) {
       parts.add('Only letters and numbers allowed in name.');
+    }
+    if (hasSpacingIssue) {
+      parts.add("Single space only between words. Ex: 'Tim Cook'.");
     }
     if (isTooLong) {
       parts.add('Up to 16 characters allowed.');
