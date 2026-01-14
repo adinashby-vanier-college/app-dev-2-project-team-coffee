@@ -10,6 +10,7 @@ import 'pages/profile_page.dart';
 import 'pages/sms_code_screen.dart';
 import 'providers/auth_provider.dart';
 import 'providers/phone_auth_provider.dart';
+import 'providers/saved_locations_provider.dart';
 import 'services/phone_auth_service.dart';
 
 import 'pages/landing_page.dart';
@@ -26,6 +27,7 @@ class FriendmapApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(
             create: (_) => PhoneAuthProvider(PhoneAuthService())),
+        ChangeNotifierProvider(create: (_) => SavedLocationsProvider()),
       ],
       child: MaterialApp(
         title: config.appName,

@@ -1,17 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../models/location_details.dart';
-import '../services/saved_locations_service.dart';
+import '../providers/saved_locations_provider.dart';
 
 class LocationDetailSheet extends StatefulWidget {
   final LocationDetails location;
-  final bool initiallySaved;
 
   const LocationDetailSheet({
     super.key,
     required this.location,
-    required this.initiallySaved,
   });
 
   @override
@@ -19,31 +18,18 @@ class LocationDetailSheet extends StatefulWidget {
 }
 
 class _LocationDetailSheetState extends State<LocationDetailSheet> {
-  final SavedLocationsService _savedService = SavedLocationsService();
-  bool _isSaved = false;
   bool _isHoursExpanded = false;
 
-  @override
-  void initState() {
-    super.initState();
-    _isSaved = widget.initiallySaved;
-  }
-
   Future<void> _toggleSave() async {
+    final provider = context.read<SavedLocationsProvider>();
     try {
-      setState(() {
-        _isSaved = !_isSaved;
-      });
-      if (_isSaved) {
-        await _savedService.saveLocation(widget.location.id);
+      if (provider.isSaved(widget.location.id)) {
+        await provider.unsaveLocation(widget.location.id);
       } else {
-        await _savedService.unsaveLocation(widget.location.id);
+        await provider.saveLocation(widget.location.id);
       }
     } catch (e) {
       if (mounted) {
-        setState(() {
-          _isSaved = !_isSaved;
-        });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error updating saved state: $e')),
         );
@@ -323,7 +309,8 @@ class _LocationDetailSheetState extends State<LocationDetailSheet> {
   }
 
   Widget _buildSaveButton(LocationDetails loc) {
-    final isSaved = _isSaved;
+    final provider = context.watch<SavedLocationsProvider>();
+    final isSaved = provider.isSaved(loc.id);
     final borderColor =
         isSaved ? const Color(0xFF16A34A) : const Color(0xFFE2E8F0);
     final bgColor =

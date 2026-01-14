@@ -3,11 +3,10 @@ import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/services.dart';
 import '../providers/auth_provider.dart';
+import '../providers/saved_locations_provider.dart';
 import '../services/storage_service.dart';
-import '../services/saved_locations_service.dart';
 import '../services/user_profile_service.dart';
 import '../models/user_model.dart';
-import '../models/location_details.dart';
 import '../services/location_data_service.dart';
 import '../widgets/location_detail_sheet.dart';
 
@@ -45,7 +44,6 @@ class ProfilePage extends StatefulWidget {
 class _ProfilePageState extends State<ProfilePage> {
   final StorageService _storageService = StorageService();
   final UserProfileService _userProfileService = UserProfileService();
-  final SavedLocationsService _savedLocationsService = SavedLocationsService();
   UserModel? _userProfile;
   bool _isLoading = true;
   bool _isEditingName = false;
@@ -57,15 +55,11 @@ class _ProfilePageState extends State<ProfilePage> {
   // Letters, numbers, and spaces only. Spacing rules are enforced separately.
   static final RegExp _nameRegex = RegExp(r'^[a-zA-Z0-9 ]+$');
 
-  List<String> _savedLocationIds = [];
-  bool _isLoadingSavedLocations = false;
-
   @override
   void initState() {
     super.initState();
     _nameController = TextEditingController();
     _loadUserProfile();
-    _loadSavedLocations();
   }
 
   @override
@@ -95,32 +89,6 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
-  Future<void> _loadSavedLocations() async {
-    setState(() {
-      _isLoadingSavedLocations = true;
-    });
-
-    try {
-      final ids = await _savedLocationsService.getSavedLocations();
-      if (mounted) {
-        setState(() {
-          _savedLocationIds = ids;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading saved locations: $e')),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoadingSavedLocations = false;
-        });
-      }
-    }
-  }
 
   bool get _isNameValid {
     final value = _nameController.text;
@@ -365,7 +333,6 @@ class _ProfilePageState extends State<ProfilePage> {
       backgroundColor: Colors.transparent,
       builder: (context) => LocationDetailSheet(
         location: location,
-        initiallySaved: _savedLocationIds.contains(locationId),
       ),
     );
   }
@@ -585,36 +552,41 @@ class _ProfilePageState extends State<ProfilePage> {
                           ),
                         ),
                         const SizedBox(height: 12),
-                        if (_isLoadingSavedLocations)
-                          const Center(child: CircularProgressIndicator())
-                        else if (_savedLocationIds.isEmpty)
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: Colors.grey.shade100,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Text(
-                              'Saved locations will appear here when you tap the bookmark icon on the map.',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(color: Colors.grey),
-                            ),
-                          )
-                        else
-                          ListView.separated(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            itemCount: _savedLocationIds.length,
-                            separatorBuilder: (_, __) => const SizedBox(height: 8),
-                            itemBuilder: (context, index) {
-                              final locationId = _savedLocationIds[index];
-                              return _SavedLocationCard(
-                                locationId: locationId,
-                                onTap: () => _openLocationFromProfile(locationId),
+                        Consumer<SavedLocationsProvider>(
+                          builder: (context, provider, _) {
+                            if (provider.isLoading) {
+                              return const Center(child: CircularProgressIndicator());
+                            } else if (provider.savedLocationIds.isEmpty) {
+                              return Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey.shade100,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Text(
+                                  'Saved locations will appear here when you tap the bookmark icon on the map.',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(color: Colors.grey),
+                                ),
                               );
-                            },
-                          ),
+                            } else {
+                              return ListView.separated(
+                                shrinkWrap: true,
+                                physics: const NeverScrollableScrollPhysics(),
+                                itemCount: provider.savedLocationIds.length,
+                                separatorBuilder: (_, __) => const SizedBox(height: 8),
+                                itemBuilder: (context, index) {
+                                  final locationId = provider.savedLocationIds[index];
+                                  return _SavedLocationCard(
+                                    locationId: locationId,
+                                    onTap: () => _openLocationFromProfile(locationId),
+                                  );
+                                },
+                              );
+                            }
+                          },
+                        ),
                       ],
                     ),
                   ),

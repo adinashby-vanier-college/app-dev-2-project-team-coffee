@@ -1,8 +1,10 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../providers/saved_locations_provider.dart';
 import '../services/saved_locations_service.dart';
 
 class GoogleMapsUIWidget extends StatefulWidget {
@@ -33,6 +35,7 @@ class _GoogleMapsUIWidgetState extends State<GoogleMapsUIWidget> {
           final locationId = message.message;
           try {
             await _savedLocationsService.saveLocation(locationId);
+            // The provider will automatically update via the stream
           } catch (e) {
             debugPrint('Error saving location: $e');
           }
@@ -44,6 +47,7 @@ class _GoogleMapsUIWidgetState extends State<GoogleMapsUIWidget> {
           final locationId = message.message;
           try {
             await _savedLocationsService.unsaveLocation(locationId);
+            // The provider will automatically update via the stream
           } catch (e) {
             debugPrint('Error unsaving location: $e');
           }
@@ -52,17 +56,8 @@ class _GoogleMapsUIWidgetState extends State<GoogleMapsUIWidget> {
       ..addJavaScriptChannel(
         'FlutterGetSavedLocations',
         onMessageReceived: (JavaScriptMessage message) async {
-          try {
-            final savedLocations = await _savedLocationsService.getSavedLocations();
-            final jsonList = jsonEncode(savedLocations);
-            await _controller.runJavaScript('''
-              if (window.loadSavedLocationsFromFlutter) {
-                window.loadSavedLocationsFromFlutter($jsonList);
-              }
-            ''');
-          } catch (e) {
-            debugPrint('Error getting saved locations: $e');
-          }
+          // This is handled by the provider listener now
+          _sendSavedLocationsToWebView();
         },
       )
       ..setNavigationDelegate(
@@ -79,8 +74,8 @@ class _GoogleMapsUIWidgetState extends State<GoogleMapsUIWidget> {
           onPageFinished: (String url) async {
             // Load OSM file and inject it into the WebView
             await _loadOSMFile();
-            // Load saved locations from Firebase
-            await _loadSavedLocations();
+            // Load saved locations from Firebase (will be sent via provider listener)
+            _sendSavedLocationsToWebView();
           },
           onWebResourceError: (WebResourceError error) {},
           onNavigationRequest: (NavigationRequest request) {
@@ -100,18 +95,15 @@ class _GoogleMapsUIWidgetState extends State<GoogleMapsUIWidget> {
       ..loadFlutterAsset('lib/googleMapsUI/index.html');
   }
 
-  Future<void> _loadSavedLocations() async {
-    try {
-      final savedLocations = await _savedLocationsService.getSavedLocations();
-      final jsonList = jsonEncode(savedLocations);
-      await _controller.runJavaScript('''
-        if (window.loadSavedLocationsFromFlutter) {
-          window.loadSavedLocationsFromFlutter($jsonList);
-        }
-      ''');
-    } catch (e) {
-      debugPrint('Error loading saved locations: $e');
-    }
+  void _sendSavedLocationsToWebView() {
+    if (!mounted) return;
+    final provider = Provider.of<SavedLocationsProvider>(context, listen: false);
+    final jsonList = jsonEncode(provider.savedLocationIds);
+    _controller.runJavaScript('''
+      if (window.loadSavedLocationsFromFlutter) {
+        window.loadSavedLocationsFromFlutter($jsonList);
+      }
+    ''');
   }
 
   Future<void> _launchExternalUrl(String url) async {
@@ -154,6 +146,15 @@ class _GoogleMapsUIWidgetState extends State<GoogleMapsUIWidget> {
 
   @override
   Widget build(BuildContext context) {
+    // Listen to saved locations changes and update the WebView
+    final savedLocations = context.watch<SavedLocationsProvider>().savedLocationIds;
+    // Send updated locations to WebView after build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _sendSavedLocationsToWebView();
+      }
+    });
+    
     return WebViewWidget(controller: _controller);
   }
 }
