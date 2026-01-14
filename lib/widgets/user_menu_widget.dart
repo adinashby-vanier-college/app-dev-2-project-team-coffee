@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../providers/auth_provider.dart';
+import '../models/user_model.dart';
 import '../services/user_profile_service.dart';
 import '../pages/landing_page.dart';
 import '../pages/profile_page.dart';
@@ -135,10 +137,27 @@ class UserMenuWidget extends StatefulWidget {
 class _UserMenuWidgetState extends State<UserMenuWidget> {
   bool _isOpen = false;
   OverlayEntry? _overlayEntry;
+  UserModel? _userProfile;
+  late final UserProfileService _userProfileService;
 
   @override
   void initState() {
     super.initState();
+    _userProfileService = UserProfileService();
+    _loadUserProfile();
+  }
+
+  Future<void> _loadUserProfile() async {
+    try {
+      final profile = await _userProfileService.getCurrentUserProfile();
+      if (mounted) {
+        setState(() {
+          _userProfile = profile;
+        });
+      }
+    } catch (_) {
+      // Fail silently; fallback UI will be used.
+    }
   }
 
   @override
@@ -364,10 +383,26 @@ class _UserMenuWidgetState extends State<UserMenuWidget> {
         child: Stack(
           children: [
             Center(
-              child: Icon(
-                Icons.person,
-                size: 18,
-                color: Colors.grey.shade600,
+              child: ClipOval(
+                child: _userProfile != null &&
+                        _userProfile!.photoURL != null &&
+                        _userProfile!.photoURL!.isNotEmpty
+                    ? CachedNetworkImage(
+                        imageUrl: _userProfile!.photoURL!,
+                        width: 32,
+                        height: 32,
+                        fit: BoxFit.cover,
+                        errorWidget: (_, __, ___) => Icon(
+                          Icons.person,
+                          size: 18,
+                          color: Colors.grey.shade600,
+                        ),
+                      )
+                    : Icon(
+                        Icons.person,
+                        size: 18,
+                        color: Colors.grey.shade600,
+                      ),
               ),
             ),
             // Subtle shine effect
