@@ -8,6 +8,8 @@
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="osmParser.js"></script>
+    <script src="osmRenderer.jsx"></script>
     <style>
       * {
         box-sizing: border-box;
@@ -408,6 +410,11 @@ const App = () => {
   const [savedLocations, setSavedLocations] = useState(new Set());
   const [isSendSceneModalOpen, setIsSendSceneModalOpen] = useState(false);
   const [selectedFriends, setSelectedFriends] = useState(new Set());
+  
+  // OSM Data State
+  const [osmData, setOsmData] = useState(null);
+  const [osmSvgElements, setOsmSvgElements] = useState([]);
+  const [isLoadingOSM, setIsLoadingOSM] = useState(true);
 
   const mapRef = useRef(null);
   const currentDay = new Date().toLocaleDateString('en-US', { weekday: 'long' });
@@ -445,6 +452,52 @@ const App = () => {
       
       return () => resizeObserver.disconnect();
     }
+  }, []);
+
+  // Function to process OSM data (called from Flutter or directly)
+  const processOSMData = (xmlText) => {
+    try {
+      if (!xmlText) {
+        throw new Error('No OSM data provided');
+      }
+      
+      if (!window.OSMParser || !window.OSMRenderer) {
+        throw new Error('OSM parser or renderer not loaded');
+      }
+      
+      const parsed = window.OSMParser.parseOSM(xmlText);
+      
+      if (!parsed.bounds) {
+        throw new Error('OSM file missing bounds');
+      }
+      
+      setOsmData(parsed);
+      
+      // Categorize ways and render to SVG
+      const categorized = window.OSMParser.categorizeWays(parsed.ways);
+      const canvasWidth = 3000;
+      const canvasHeight = 3000;
+      const svgElements = window.OSMRenderer.renderOSMToSVG(categorized, parsed.nodes, parsed.bounds, canvasWidth, canvasHeight);
+      setOsmSvgElements(svgElements);
+      console.log('OSM data loaded successfully:', { ways: parsed.ways.length, nodes: parsed.nodes.size });
+      setIsLoadingOSM(false);
+    } catch (error) {
+      console.error('Error processing OSM data:', error);
+      // Set empty elements on error so map still renders
+      setOsmSvgElements([]);
+      setIsLoadingOSM(false);
+    }
+  };
+
+  // Expose function for Flutter to call
+  window.loadOSMDataFromFlutter = processOSMData;
+
+  // --- LOAD OSM DATA ---
+  useEffect(() => {
+    setIsLoadingOSM(true);
+    // The OSM data will be loaded by Flutter via loadOSMDataFromFlutter
+    // If it's not called within a reasonable time, we'll keep the loading state
+    // but the map will still render with the grid
   }, []);
 
   useEffect(() => {
@@ -605,25 +658,33 @@ const App = () => {
               willChange: 'transform'
             }}
           >
-            <svg 
-              width="3000" 
-              height="3000" 
-              viewBox="0 0 3000 3000" 
-              style={{ 
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                pointerEvents: 'none'
-              }}
-            >
-              <defs>
-                <pattern id="cityGrid" width="20" height="20" patternUnits="userSpaceOnUse" patternTransform="rotate(-15)">
-                  <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#d9d7d3" strokeWidth="0.8"/>
-                </pattern>
-              </defs>
-              <rect width="3000" height="3000" fill="#E5E3DF" />
-              <rect width="3000" height="3000" fill="url(#cityGrid)" />
-            </svg>
+            {isLoadingOSM ? (
+              <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', color: '#64748b', fontSize: '14px' }}>
+                Loading map data...
+              </div>
+            ) : (
+              <svg 
+                width="3000" 
+                height="3000" 
+                viewBox="0 0 3000 3000" 
+                style={{ 
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  pointerEvents: 'none'
+                }}
+              >
+                <defs>
+                  <pattern id="cityGrid" width="20" height="20" patternUnits="userSpaceOnUse" patternTransform="rotate(-15)">
+                    <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#d9d7d3" strokeWidth="0.8"/>
+                  </pattern>
+                </defs>
+                <rect width="3000" height="3000" fill="#E5E3DF" />
+                <rect width="3000" height="3000" fill="url(#cityGrid)" />
+                {/* OSM Rendered Elements */}
+                {osmSvgElements}
+              </svg>
+            )}
 
             <div style={{ position: 'absolute', top: '1850px', left: '1200px', fontSize: '32px', fontWeight: '900', color: 'rgba(71, 85, 105, 0.25)', textTransform: 'uppercase', letterSpacing: '0.15em', transform: 'rotate(-8deg)', pointerEvents: 'none', fontFamily: 'Arial, sans-serif' }}>Downtown</div>
             <div style={{ position: 'absolute', top: '2150px', left: '1600px', fontSize: '26px', fontWeight: '900', color: 'rgba(71, 85, 105, 0.25)', textTransform: 'uppercase', letterSpacing: '0.15em', transform: 'rotate(-8deg)', pointerEvents: 'none', fontFamily: 'Arial, sans-serif' }}>Old Port</div>

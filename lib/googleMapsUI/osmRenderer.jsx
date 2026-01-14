@@ -98,7 +98,7 @@ window.OSMRenderer.wayToPath = function(way, nodes, bounds, canvasWidth, canvasH
   const points = way.nodeRefs
     .map(ref => nodes.get(ref))
     .filter(node => node != null)
-    .map(node => latLonToPixel(node.lat, node.lon, bounds, canvasWidth, canvasHeight));
+    .map(node => window.OSMRenderer.latLonToPixel(node.lat, node.lon, bounds, canvasWidth, canvasHeight));
   
   if (points.length === 0) return '';
   
