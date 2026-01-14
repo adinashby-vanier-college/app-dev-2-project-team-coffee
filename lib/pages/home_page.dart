@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../widgets/nav_bar.dart';
-import '../widgets/css_map_widget.dart';
+import '../widgets/google_maps_ui_widget.dart';
 import '../widgets/user_menu_widget.dart';
 
 class HomePage extends StatelessWidget {
@@ -42,7 +42,7 @@ class HomePage extends StatelessWidget {
         ),
         centerTitle: false,
       ),
-      body: const CssMapWidget(),
+      body: const GoogleMapsUIWidget(),
       bottomNavigationBar: NavBar(
         currentIndex: 0, // Home is at index 0
         onTap: (index) => _onNavBarTap(context, index),
