@@ -6,6 +6,7 @@ import 'pages/chat_page.dart';
 import 'pages/friends_page.dart';
 import 'pages/home_page.dart';
 import 'pages/phone_entry_screen.dart';
+import 'pages/profile_page.dart';
 import 'pages/sms_code_screen.dart';
 import 'providers/auth_provider.dart';
 import 'providers/phone_auth_provider.dart';
@@ -35,6 +36,7 @@ class FriendmapApp extends StatelessWidget {
           '/friend': (context) => const ChatPage(),
           '/home': (context) => const HomePage(),
           '/phone-entry': (context) => const PhoneEntryScreen(),
+          '/profile': (context) => const ProfilePage(),
           '/sms-code': (context) => const SmsCodeScreen(),
         },
       ),

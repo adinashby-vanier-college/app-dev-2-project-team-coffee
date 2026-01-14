@@ -116,6 +116,30 @@ class UserProfileService {
       }
     }
   }
+
+  /// Updates the user's name in Firestore
+  Future<void> updateUserName(String newName) async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      throw Exception('No authenticated user');
+    }
+
+    await _firestore.collection('users').doc(user.uid).update({
+      'name': newName,
+    });
+  }
+
+  /// Updates the user's profile picture URL in Firestore
+  Future<void> updateProfilePicture(String photoURL) async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      throw Exception('No authenticated user');
+    }
+
+    await _firestore.collection('users').doc(user.uid).update({
+      'photoURL': photoURL,
+    });
+  }
 }
 
 

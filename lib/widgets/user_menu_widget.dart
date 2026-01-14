@@ -3,6 +3,67 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../services/user_profile_service.dart';
 import '../pages/landing_page.dart';
+import '../pages/profile_page.dart';
+
+class _ProfileMenuItem extends StatefulWidget {
+  final VoidCallback onTap;
+
+  const _ProfileMenuItem({required this.onTap});
+
+  @override
+  State<_ProfileMenuItem> createState() => _ProfileMenuItemState();
+}
+
+class _ProfileMenuItemState extends State<_ProfileMenuItem> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: InkWell(
+        onTap: widget.onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 10,
+          ),
+          color: _isHovered ? Colors.blue.shade50 : Colors.transparent,
+          child: Row(
+            children: [
+              Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  color: _isHovered
+                      ? Colors.blue.shade100.withOpacity(0.5)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  Icons.person,
+                  size: 15,
+                  color: _isHovered ? Colors.blue.shade500 : Colors.grey.shade400,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Profile',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: _isHovered ? Colors.blue.shade600 : Colors.black87,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 class _LogoutMenuItem extends StatefulWidget {
   final VoidCallback onTap;
@@ -89,6 +150,13 @@ class _UserMenuWidgetState extends State<UserMenuWidget> {
   void _removeOverlay() {
     _overlayEntry?.remove();
     _overlayEntry = null;
+  }
+
+  void _handleProfile() {
+    _closeMenu();
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (context) => const ProfilePage()),
+    );
   }
 
   Future<void> _handleLogout() async {
@@ -242,8 +310,17 @@ class _UserMenuWidgetState extends State<UserMenuWidget> {
           borderRadius: BorderRadius.circular(12),
           child: Material(
             color: Colors.transparent,
-            child: _LogoutMenuItem(
-              onTap: _handleLogout,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _ProfileMenuItem(
+                  onTap: _handleProfile,
+                ),
+                Divider(height: 1, color: Colors.grey.shade200),
+                _LogoutMenuItem(
+                  onTap: _handleLogout,
+                ),
+              ],
             ),
           ),
         ),
