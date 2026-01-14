@@ -427,7 +427,7 @@ const App = () => {
                       }}
                     />
                     
-                    {/* Label (always rendered, visibility and style toggled) */}
+                    {/* Label (always visible title card) */}
                     <div 
                       className="absolute top-full backdrop-blur-sm font-bold whitespace-nowrap pointer-events-none z-30"
                       style={{
@@ -440,16 +440,16 @@ const App = () => {
                         paddingBottom: `${labelPaddingY}px`,
                         borderRadius: `${labelBorderRadius}px`,
                         marginTop: `${labelMarginTop}px`,
-                        backgroundColor: showHoverCard ? 'rgba(255, 255, 255, 0.95)' : 'rgba(255, 255, 255, 0.65)',
-                        boxShadow: showHoverCard ? '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)' : '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
-                        border: showHoverCard ? '1px solid rgba(0, 0, 0, 0.1)' : 'none',
+                        backgroundColor: showHoverCard || isSelected ? 'rgba(255, 255, 255, 0.95)' : 'rgba(255, 255, 255, 0.65)',
+                        boxShadow: showHoverCard || isSelected ? '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)' : '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
+                        border: showHoverCard || isSelected ? '1px solid rgba(0, 0, 0, 0.1)' : 'none',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         textAlign: 'center',
                         left: '50%',
                         transform: 'translateX(-50%)',
-                        opacity: showHoverCard || (isSelected || viewState.scale > 0.7) ? 1 : 0,
+                        opacity: 1,
                         pointerEvents: 'none'
                       }}
                     >

@@ -262,13 +262,19 @@ window.MapService.searchLocations = (locations, query) => {
 
 window.MapService.calculateViewForLocation = (location, options = {}) => {
   const { 
-    offsetX = 200, 
-    offsetY = 400, 
+    viewportWidth = 400,
+    viewportHeight = 600,
     scale = 1 
   } = options;
+  
+  // Calculate viewport center
+  const viewportCenterX = viewportWidth / 2;
+  const viewportCenterY = viewportHeight / 2;
+  
+  // Center the location in the viewport
   return {
-    x: -location.coordinates.x * scale + offsetX,
-    y: -location.coordinates.y * scale + offsetY,
+    x: viewportCenterX - (location.coordinates.x * scale),
+    y: viewportCenterY - (location.coordinates.y * scale),
     scale: scale
   };
 };
@@ -400,7 +406,11 @@ const Compass = (props) => React.createElement(Icon, { ...props, name: 'Compass'
 
 const App = () => {
   const [selectedLocation, setSelectedLocation] = useState(null);
-  const [viewState, setViewState] = useState({ x: -1300, y: -1300, scale: 0.5 });
+  // Initialize with a default that will be updated by useEffect
+  const [viewState, setViewState] = useState(() => {
+    // Use a reasonable default that works until useEffect runs
+    return window.MapService.getDefaultViewState();
+  });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [isHoursExpanded, setIsHoursExpanded] = useState(false);
@@ -458,7 +468,9 @@ const App = () => {
   const processOSMData = (xmlText) => {
     try {
       if (!xmlText) {
-        throw new Error('No OSM data provided');
+        console.warn('No OSM data provided, map will render without OSM features');
+        setIsLoadingOSM(false);
+        return;
       }
       
       if (!window.OSMParser || !window.OSMRenderer) {
@@ -489,15 +501,38 @@ const App = () => {
     }
   };
 
-  // Expose function for Flutter to call
-  window.loadOSMDataFromFlutter = processOSMData;
+  // Expose function for Flutter to call (with safety check)
+  // Use a queue in case Flutter calls before React is ready
+  window._osmDataQueue = window._osmDataQueue || [];
+  window.loadOSMDataFromFlutter = (xmlText) => {
+    if (typeof processOSMData === 'function') {
+      processOSMData(xmlText);
+    } else {
+      // Queue the data if React isn't ready yet
+      window._osmDataQueue.push(xmlText);
+    }
+  };
 
   // --- LOAD OSM DATA ---
   useEffect(() => {
     setIsLoadingOSM(true);
     // The OSM data will be loaded by Flutter via loadOSMDataFromFlutter
-    // If it's not called within a reasonable time, we'll keep the loading state
-    // but the map will still render with the grid
+    // Check if there's queued data from before React was ready
+    if (window._osmDataQueue && window._osmDataQueue.length > 0) {
+      const queuedData = window._osmDataQueue.shift();
+      processOSMData(queuedData);
+    }
+    // Set a timeout to stop loading state if no data arrives
+    const timeout = setTimeout(() => {
+      setIsLoadingOSM(prev => {
+        if (prev) {
+          console.warn('OSM data loading timeout, rendering map without OSM features');
+          return false;
+        }
+        return prev;
+      });
+    }, 5000);
+    return () => clearTimeout(timeout);
   }, []);
 
   useEffect(() => {
@@ -510,8 +545,16 @@ const App = () => {
     setIsHoursExpanded(false);
     setSearchQuery(''); 
     setSearchResults([]);
-    const newViewState = window.MapService.calculateViewForLocation(location, { scale: viewState.scale });
-    setViewState(newViewState);
+    if (mapRef.current) {
+      const viewportWidth = mapRef.current.clientWidth || 400;
+      const viewportHeight = mapRef.current.clientHeight || 600;
+      const newViewState = window.MapService.calculateViewForLocation(location, { 
+        viewportWidth,
+        viewportHeight,
+        scale: viewState.scale 
+      });
+      setViewState(newViewState);
+    }
   };
 
   const getEventPos = (e) => {
@@ -525,7 +568,12 @@ const App = () => {
     e.preventDefault();
     const pos = getEventPos(e);
     setIsDragging(true);
-    setDragStart({ x: pos.x - viewState.x, y: pos.y - viewState.y });
+    // Store the initial mouse/touch position and current view state
+    // dragStart will be used to calculate the offset during dragging
+    setDragStart({ 
+      x: pos.x - viewState.x, 
+      y: pos.y - viewState.y 
+    });
     touchStartRef.current = pos;
   };
 
@@ -655,7 +703,8 @@ const App = () => {
               transformOrigin: '0 0',
               width: '3000px', 
               height: '3000px',
-              willChange: 'transform'
+              willChange: 'transform',
+              overflow: 'visible'
             }}
           >
             {isLoadingOSM ? (
@@ -671,7 +720,8 @@ const App = () => {
                   position: 'absolute',
                   top: 0,
                   left: 0,
-                  pointerEvents: 'none'
+                  pointerEvents: 'none',
+                  zIndex: 1
                 }}
               >
                 <defs>
@@ -700,8 +750,8 @@ const App = () => {
               const borderWidth = 1.5 * inverseScale;
               const needleSize = 3 * inverseScale;
               const needleTop = 4 * inverseScale;
-              const isHovered = hoveredLocationId === loc.id;
-              const isZoomedOut = viewState.scale <= 0.7;
+              const isZoomedIn = viewState.scale > 0.7;
+              const showLabel = true; // Always show labels
               
               return (
                 <div 
@@ -711,18 +761,17 @@ const App = () => {
                     left: loc.coordinates.x,
                     top: loc.coordinates.y,
                     transform: 'translate(-50%, -100%)',
-                    zIndex: isSelected ? 50 : 10,
+                    zIndex: isSelected ? 1000 : 100,
                     cursor: 'pointer',
-                    pointerEvents: 'auto'
+                    pointerEvents: 'auto',
+                    overflow: 'visible'
                   }}
                   onClick={(e) => {
                     e.stopPropagation();
                     setSelectedLocation(loc);
                   }}
-                  onMouseEnter={() => setHoveredLocationId(loc.id)}
-                  onMouseLeave={() => setHoveredLocationId(null)}
                 >
-                  <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', overflow: 'visible', zIndex: isSelected ? 1000 : 100 }}>
                     <div 
                       style={{
                         width: `${pinSize}px`,
@@ -763,18 +812,28 @@ const App = () => {
                         marginTop: '-2px'
                       }}
                     />
-                    {(isSelected || (isHovered && isZoomedOut)) && (
+                    {showLabel && (
                       <div 
                         style={{
-                          marginTop: '4px',
-                          padding: '4px 8px',
+                          position: 'absolute',
+                          top: '100%',
+                          left: '50%',
+                          transform: 'translateX(-50%)',
+                          marginTop: `${Math.max(4, 4 * inverseScale)}px`,
+                          padding: `${Math.max(3, 3 * inverseScale)}px ${Math.max(6, 6 * inverseScale)}px`,
                           backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                          borderRadius: '8px',
-                          fontSize: `${8 * inverseScale}px`,
-                          fontWeight: 'bold',
+                          borderRadius: `${Math.max(4, 4 * inverseScale)}px`,
+                          fontSize: `${Math.max(10, 10 * inverseScale)}px`,
+                          fontWeight: '500',
                           whiteSpace: 'nowrap',
-                          boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                          pointerEvents: 'none'
+                          color: '#1e293b',
+                          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.12)',
+                          border: '1px solid rgba(0, 0, 0, 0.1)',
+                          pointerEvents: 'none',
+                          fontFamily: 'Arial, sans-serif',
+                          lineHeight: '1.2',
+                          opacity: 1,
+                          zIndex: 9999
                         }}
                       >
                         {loc.name}

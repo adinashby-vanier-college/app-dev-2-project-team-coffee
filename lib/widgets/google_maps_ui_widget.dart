@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class GoogleMapsUIWidget extends StatefulWidget {
   const GoogleMapsUIWidget({super.key});
@@ -12,6 +13,7 @@ class GoogleMapsUIWidget extends StatefulWidget {
 
 class _GoogleMapsUIWidgetState extends State<GoogleMapsUIWidget> {
   late final WebViewController _controller;
+  String? _initialUrl;
 
   @override
   void initState() {
@@ -24,15 +26,39 @@ class _GoogleMapsUIWidgetState extends State<GoogleMapsUIWidget> {
           onProgress: (int progress) {
             // Update loading bar.
           },
-          onPageStarted: (String url) {},
+          onPageStarted: (String url) {
+            // Store the initial URL when the page first loads
+            if (_initialUrl == null) {
+              _initialUrl = url;
+            }
+          },
           onPageFinished: (String url) async {
             // Load OSM file and inject it into the WebView
             await _loadOSMFile();
           },
           onWebResourceError: (WebResourceError error) {},
+          onNavigationRequest: (NavigationRequest request) {
+            // If this is the initial page load, allow it
+            if (_initialUrl == null || request.url == _initialUrl) {
+              return NavigationDecision.navigate;
+            }
+            
+            // If it's a different URL (link click), open in external browser
+            _launchExternalUrl(request.url);
+            
+            // Prevent navigation within the WebView
+            return NavigationDecision.prevent;
+          },
         ),
       )
       ..loadFlutterAsset('lib/googleMapsUI/index.html');
+  }
+
+  Future<void> _launchExternalUrl(String url) async {
+    final Uri uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
   }
 
   Future<void> _loadOSMFile() async {
