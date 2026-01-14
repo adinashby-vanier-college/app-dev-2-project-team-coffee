@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/services.dart';
 import '../providers/auth_provider.dart';
+import '../services/storage_service.dart';
 import '../services/user_profile_service.dart';
 import '../models/user_model.dart';
 
@@ -38,11 +39,13 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
+  final StorageService _storageService = StorageService();
   final UserProfileService _userProfileService = UserProfileService();
   UserModel? _userProfile;
   bool _isLoading = true;
   bool _isEditingName = false;
   bool _isSavingName = false;
+  bool _isUploadingPhoto = false;
   String? _nameError;
   bool _nameLengthLimitHit = false;
   late TextEditingController _nameController;
@@ -157,6 +160,128 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
+  Future<void> _pickAndUploadPhoto({required bool fromCamera}) async {
+    if (_isUploadingPhoto) return;
+
+    try {
+      setState(() {
+        _isUploadingPhoto = true;
+      });
+
+      final imageFile = await _storageService.pickImage(fromCamera: fromCamera);
+      if (imageFile == null) {
+        return; // user cancelled
+      }
+
+      // Replace existing picture (optional cleanup)
+      await _storageService.deleteProfilePicture();
+
+      final downloadUrl =
+          await _storageService.uploadProfilePicture(imageFile);
+      await _userProfileService.updateProfilePicture(downloadUrl);
+
+      setState(() {
+        _userProfile = UserModel(
+          uid: _userProfile!.uid,
+          email: _userProfile!.email,
+          displayName: _userProfile!.displayName,
+          photoURL: downloadUrl,
+          name: _userProfile!.name,
+          createdAt: _userProfile!.createdAt,
+        );
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error updating photo: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isUploadingPhoto = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _removePhoto() async {
+    if (_isUploadingPhoto) return;
+    try {
+      setState(() {
+        _isUploadingPhoto = true;
+      });
+
+      await _storageService.deleteProfilePicture();
+      await _userProfileService.updateProfilePicture('');
+
+      setState(() {
+        _userProfile = UserModel(
+          uid: _userProfile!.uid,
+          email: _userProfile!.email,
+          displayName: _userProfile!.displayName,
+          photoURL: '',
+          name: _userProfile!.name,
+          createdAt: _userProfile!.createdAt,
+        );
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error removing photo: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isUploadingPhoto = false;
+        });
+      }
+    }
+  }
+
+  void _showPhotoOptions() {
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (context) {
+        final hasPhoto =
+            _userProfile?.photoURL != null && _userProfile!.photoURL!.isNotEmpty;
+        return SafeArea(
+          child: Wrap(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.photo_library),
+                title: const Text('Choose from gallery'),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _pickAndUploadPhoto(fromCamera: false);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_camera),
+                title: const Text('Take a photo'),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _pickAndUploadPhoto(fromCamera: true);
+                },
+              ),
+              if (hasPhoto)
+                ListTile(
+                  leading: const Icon(Icons.delete, color: Colors.red),
+                  title: const Text('Remove photo',
+                      style: TextStyle(color: Colors.red)),
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    _removePhoto();
+                  },
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -178,7 +303,9 @@ class _ProfilePageState extends State<ProfilePage> {
                         // Profile Picture
                         Stack(
                           children: [
-                            CircleAvatar(
+                          GestureDetector(
+                            onTap: _isUploadingPhoto ? null : _showPhotoOptions,
+                            child: CircleAvatar(
                               radius: 60,
                               backgroundColor: Colors.grey.shade300,
                               backgroundImage:
@@ -196,6 +323,38 @@ class _ProfilePageState extends State<ProfilePage> {
                                     )
                                   : null,
                             ),
+                          ),
+                          Positioned(
+                            bottom: 2,
+                            right: 2,
+                            child: Container(
+                              width: 32,
+                              height: 32,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.08),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: _isUploadingPhoto
+                                  ? const Padding(
+                                      padding: EdgeInsets.all(8.0),
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  : const Icon(
+                                      Icons.camera_alt,
+                                      size: 16,
+                                      color: Colors.black54,
+                                    ),
+                            ),
+                          ),
                           ],
                         ),
                         const SizedBox(height: 24),

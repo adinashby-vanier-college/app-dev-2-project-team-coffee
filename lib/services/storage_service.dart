@@ -5,7 +5,10 @@ import 'package:image_picker/image_picker.dart';
 import 'package:flutter/foundation.dart';
 
 class StorageService {
-  final FirebaseStorage _storage = FirebaseStorage.instance;
+  // Explicitly target the Firebase Storage bucket:
+  // gs://friendmap-5b654.firebasestorage.app
+  final FirebaseStorage _storage =
+      FirebaseStorage.instanceFor(bucket: 'friendmap-5b654.firebasestorage.app');
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final ImagePicker _picker = ImagePicker();
 
@@ -30,11 +33,16 @@ class StorageService {
     }
 
     try {
+      final bucketName = _storage.app.options.storageBucket ?? 'unknown';
+      debugPrint('Uploading to bucket: $bucketName');
+      
       // Reference to storage location: profile_pictures/{userId}.jpg
       final storageRef = _storage
           .ref()
           .child('profile_pictures')
           .child('${user.uid}.jpg');
+
+      debugPrint('Upload path: profile_pictures/${user.uid}.jpg');
 
       // Upload file
       final uploadTask = storageRef.putFile(imageFile);
@@ -45,8 +53,19 @@ class StorageService {
       // Get download URL
       final downloadURL = await snapshot.ref.getDownloadURL();
       
+      debugPrint('Upload successful! URL: $downloadURL');
       return downloadURL;
+    } on FirebaseException catch (e) {
+      debugPrint('Firebase Storage error: code=${e.code}, message=${e.message}');
+      if (e.code == 'object-not-found' || e.code == 'bucket-not-found') {
+        throw Exception(
+          'Storage bucket not found. Please ensure Firebase Storage is enabled '
+          'in your Firebase Console and the bucket name matches your project ID.'
+        );
+      }
+      throw Exception('Failed to upload image: ${e.message ?? e.code}');
     } catch (e) {
+      debugPrint('Upload error: $e');
       throw Exception('Failed to upload image: $e');
     }
   }
@@ -62,8 +81,11 @@ class StorageService {
           .child('profile_pictures')
           .child('${user.uid}.jpg')
           .delete();
-    } catch (e) {
+    } on FirebaseException catch (e) {
       // Ignore if file doesn't exist
+      if (e.code == 'object-not-found') return;
+      debugPrint('Error deleting old picture: $e');
+    } catch (e) {
       debugPrint('Error deleting old picture: $e');
     }
   }
