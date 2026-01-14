@@ -751,7 +751,7 @@ const App = () => {
               const needleSize = 3 * inverseScale;
               const needleTop = 4 * inverseScale;
               const isZoomedIn = viewState.scale > 0.7;
-              const showLabel = true; // Always show labels
+              const showLabel = viewState.scale > 0.5; // Hide labels when zoomed out more than halfway
               
               return (
                 <div 
