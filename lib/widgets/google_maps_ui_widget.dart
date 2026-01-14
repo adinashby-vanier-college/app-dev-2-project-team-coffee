@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../services/saved_locations_service.dart';
 
 class GoogleMapsUIWidget extends StatefulWidget {
   const GoogleMapsUIWidget({super.key});
@@ -14,13 +15,56 @@ class GoogleMapsUIWidget extends StatefulWidget {
 class _GoogleMapsUIWidgetState extends State<GoogleMapsUIWidget> {
   late final WebViewController _controller;
   String? _initialUrl;
+  final SavedLocationsService _savedLocationsService = SavedLocationsService();
 
   @override
   void initState() {
     super.initState();
+    _initializeWebView();
+  }
+
+  void _initializeWebView() {
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(Colors.transparent)
+      ..addJavaScriptChannel(
+        'FlutterSaveLocation',
+        onMessageReceived: (JavaScriptMessage message) async {
+          final locationId = message.message;
+          try {
+            await _savedLocationsService.saveLocation(locationId);
+          } catch (e) {
+            debugPrint('Error saving location: $e');
+          }
+        },
+      )
+      ..addJavaScriptChannel(
+        'FlutterUnsaveLocation',
+        onMessageReceived: (JavaScriptMessage message) async {
+          final locationId = message.message;
+          try {
+            await _savedLocationsService.unsaveLocation(locationId);
+          } catch (e) {
+            debugPrint('Error unsaving location: $e');
+          }
+        },
+      )
+      ..addJavaScriptChannel(
+        'FlutterGetSavedLocations',
+        onMessageReceived: (JavaScriptMessage message) async {
+          try {
+            final savedLocations = await _savedLocationsService.getSavedLocations();
+            final jsonList = jsonEncode(savedLocations);
+            await _controller.runJavaScript('''
+              if (window.loadSavedLocationsFromFlutter) {
+                window.loadSavedLocationsFromFlutter($jsonList);
+              }
+            ''');
+          } catch (e) {
+            debugPrint('Error getting saved locations: $e');
+          }
+        },
+      )
       ..setNavigationDelegate(
         NavigationDelegate(
           onProgress: (int progress) {
@@ -35,6 +79,8 @@ class _GoogleMapsUIWidgetState extends State<GoogleMapsUIWidget> {
           onPageFinished: (String url) async {
             // Load OSM file and inject it into the WebView
             await _loadOSMFile();
+            // Load saved locations from Firebase
+            await _loadSavedLocations();
           },
           onWebResourceError: (WebResourceError error) {},
           onNavigationRequest: (NavigationRequest request) {
@@ -52,6 +98,20 @@ class _GoogleMapsUIWidgetState extends State<GoogleMapsUIWidget> {
         ),
       )
       ..loadFlutterAsset('lib/googleMapsUI/index.html');
+  }
+
+  Future<void> _loadSavedLocations() async {
+    try {
+      final savedLocations = await _savedLocationsService.getSavedLocations();
+      final jsonList = jsonEncode(savedLocations);
+      await _controller.runJavaScript('''
+        if (window.loadSavedLocationsFromFlutter) {
+          window.loadSavedLocationsFromFlutter($jsonList);
+        }
+      ''');
+    } catch (e) {
+      debugPrint('Error loading saved locations: $e');
+    }
   }
 
   Future<void> _launchExternalUrl(String url) async {

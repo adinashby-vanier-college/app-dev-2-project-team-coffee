@@ -540,6 +540,19 @@ const App = () => {
     setSearchResults(results);
   }, [searchQuery]);
 
+  // Load saved locations from Firebase when component mounts
+  useEffect(() => {
+    // Function to receive saved locations from Flutter
+    window.loadSavedLocationsFromFlutter = (locationIds) => {
+      setSavedLocations(new Set(locationIds));
+    };
+    
+    // Request saved locations from Flutter
+    if (window.FlutterGetSavedLocations) {
+      window.FlutterGetSavedLocations.postMessage('');
+    }
+  }, []);
+
   const handleSearchSelect = (location) => {
     setSelectedLocation(location);
     setIsHoursExpanded(false);
@@ -624,12 +637,23 @@ const App = () => {
 
   const handleSaveToggle = () => {
     if (!selectedLocation) return;
+    const isCurrentlySaved = savedLocations.has(selectedLocation.id);
+    
+    // Update local state immediately for UI responsiveness
     setSavedLocations(prev => {
       const newSet = new Set(prev);
-      if (newSet.has(selectedLocation.id)) {
+      if (isCurrentlySaved) {
         newSet.delete(selectedLocation.id);
+        // Notify Flutter to unsave in Firebase
+        if (window.FlutterUnsaveLocation) {
+          window.FlutterUnsaveLocation.postMessage(selectedLocation.id);
+        }
       } else {
         newSet.add(selectedLocation.id);
+        // Notify Flutter to save in Firebase
+        if (window.FlutterSaveLocation) {
+          window.FlutterSaveLocation.postMessage(selectedLocation.id);
+        }
       }
       return newSet;
     });
