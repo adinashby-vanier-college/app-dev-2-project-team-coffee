@@ -1,9 +1,34 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/services.dart';
 import '../providers/auth_provider.dart';
 import '../services/user_profile_service.dart';
 import '../models/user_model.dart';
+
+class _MaxLenNotifierFormatter extends TextInputFormatter {
+  final int maxLength;
+  final VoidCallback onLimitHit;
+
+  _MaxLenNotifierFormatter({
+    required this.maxLength,
+    required this.onLimitHit,
+  });
+
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    if (newValue.text.length <= maxLength) {
+      return newValue;
+    }
+
+    // User attempted to exceed max length: keep old value but notify.
+    WidgetsBinding.instance.addPostFrameCallback((_) => onLimitHit());
+    return oldValue;
+  }
+}
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -18,7 +43,10 @@ class _ProfilePageState extends State<ProfilePage> {
   bool _isLoading = true;
   bool _isEditingName = false;
   bool _isSavingName = false;
+  String? _nameError;
+  bool _nameLengthLimitHit = false;
   late TextEditingController _nameController;
+  static final RegExp _nameRegex = RegExp(r'^[a-zA-Z0-9]+$');
 
   @override
   void initState() {
@@ -54,9 +82,39 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
+  bool get _isNameValid {
+    final value = _nameController.text.trim();
+    return value.isNotEmpty && value.length <= 16 && _nameRegex.hasMatch(value);
+  }
+
+  String? _buildNameErrorText() {
+    final value = _nameController.text.trim();
+    final bool hasInvalidChars = value.isNotEmpty && !_nameRegex.hasMatch(value);
+    final bool isTooLong = _nameLengthLimitHit;
+
+    if (!hasInvalidChars && !isTooLong) return null;
+
+    final parts = <String>[];
+    if (hasInvalidChars) {
+      parts.add('Only letters and numbers allowed in name.');
+    }
+    if (isTooLong) {
+      parts.add('Up to 16 characters allowed.');
+    }
+    return parts.join(' ');
+  }
+
   Future<void> _saveUserName() async {
     final newName = _nameController.text.trim();
-    if (newName.isEmpty || _userProfile == null) {
+    if (_userProfile == null) {
+      return;
+    }
+
+    if (!_isNameValid) {
+      setState(() {
+        _nameError = _buildNameErrorText() ??
+            'Only letters and numbers allowed in name.';
+      });
       return;
     }
 
@@ -151,10 +209,33 @@ class _ProfilePageState extends State<ProfilePage> {
                                 ? TextField(
                                     controller: _nameController,
                                     textAlign: TextAlign.center,
+                                    maxLength: 16,
+                                    inputFormatters: [
+                                      _MaxLenNotifierFormatter(
+                                        maxLength: 16,
+                                        onLimitHit: () {
+                                          if (!_nameLengthLimitHit) {
+                                            setState(() {
+                                              _nameLengthLimitHit = true;
+                                              _nameError = _buildNameErrorText();
+                                            });
+                                          }
+                                        },
+                                      ),
+                                    ],
+                                    onChanged: (value) {
+                                      setState(() {
+                                        if (value.length < 16) {
+                                          _nameLengthLimitHit = false;
+                                        }
+                                        _nameError = _buildNameErrorText();
+                                      });
+                                    },
                                     decoration: const InputDecoration(
                                       hintText: 'Enter your name',
                                       border: UnderlineInputBorder(),
                                       isDense: true,
+                                      counterText: '',
                                     ),
                                   )
                                 : Text(
@@ -187,6 +268,18 @@ class _ProfilePageState extends State<ProfilePage> {
                       ),
                       if (_isEditingName) ...[
                         const SizedBox(height: 8),
+                        if (_nameError != null) ...[
+                          Text(
+                            _nameError!,
+                            style: const TextStyle(
+                              color: Colors.red,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 6),
+                        ],
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
@@ -196,6 +289,8 @@ class _ProfilePageState extends State<ProfilePage> {
                                   : () {
                                       setState(() {
                                         _isEditingName = false;
+                                        _nameError = null;
+                                        _nameLengthLimitHit = false;
                                         _nameController.text =
                                             _userProfile!.name ?? '';
                                       });
@@ -205,7 +300,9 @@ class _ProfilePageState extends State<ProfilePage> {
                             const SizedBox(width: 8),
                             ElevatedButton(
                               onPressed:
-                                  _isSavingName ? null : () => _saveUserName(),
+                                  (_isSavingName || !_isNameValid)
+                                      ? null
+                                      : () => _saveUserName(),
                               child: _isSavingName
                                   ? const SizedBox(
                                       width: 16,
