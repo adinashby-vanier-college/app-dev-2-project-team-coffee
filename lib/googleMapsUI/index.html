@@ -681,33 +681,6 @@ const App = () => {
     setSelectedFriends(new Set());
   };
 
-  // Allow Flutter to open a specific location by ID using the same modal logic
-  useEffect(() => {
-    window.openLocationFromFlutter = (locationId) => {
-      if (!locationId || !window.LOCATION_DATABASE) return;
-      const location = window.LOCATION_DATABASE.find((loc) => loc.id === locationId);
-      if (!location) return;
-
-      setSelectedLocation(location);
-      setIsHoursExpanded(false);
-
-      if (mapRef.current) {
-        const viewportWidth = mapRef.current.clientWidth || 400;
-        const viewportHeight = mapRef.current.clientHeight || 600;
-        const newViewState = window.MapService.calculateViewForLocation(location, {
-          viewportWidth,
-          viewportHeight,
-          scale: viewState.scale,
-        });
-        setViewState(newViewState);
-      }
-    };
-
-    return () => {
-      window.openLocationFromFlutter = null;
-    };
-  }, [viewState.scale]);
-
   const handleCancelSendScene = () => {
     setIsSendSceneModalOpen(false);
     setSelectedFriends(new Set());

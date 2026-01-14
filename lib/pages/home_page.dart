@@ -5,9 +5,7 @@ import '../widgets/google_maps_ui_widget.dart';
 import '../widgets/user_menu_widget.dart';
 
 class HomePage extends StatelessWidget {
-  final String? initialLocationId;
-
-  const HomePage({super.key, this.initialLocationId});
+  const HomePage({super.key});
 
   void _onNavBarTap(BuildContext context, int index) {
     // Navigate based on selected index
@@ -44,7 +42,7 @@ class HomePage extends StatelessWidget {
         ),
         centerTitle: false,
       ),
-      body: GoogleMapsUIWidget(initialLocationId: initialLocationId),
+      body: const GoogleMapsUIWidget(),
       bottomNavigationBar: NavBar(
         currentIndex: 0, // Home is at index 0
         onTap: (index) => _onNavBarTap(context, index),

@@ -5,9 +5,11 @@ import 'package:flutter/services.dart';
 import '../providers/auth_provider.dart';
 import '../services/storage_service.dart';
 import '../services/saved_locations_service.dart';
-import '../pages/home_page.dart';
 import '../services/user_profile_service.dart';
 import '../models/user_model.dart';
+import '../models/location_details.dart';
+import '../services/location_data_service.dart';
+import '../widgets/location_detail_sheet.dart';
 
 class _MaxLenNotifierFormatter extends TextInputFormatter {
   final int maxLength;
@@ -347,13 +349,24 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   void _openLocationFromProfile(String locationId) {
-    // Navigate to HomePage with the initial location ID so that
-    // GoogleMapsUIWidget can open the same map modal.
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(
-        builder: (context) => HomePage(initialLocationId: locationId),
+    final location =
+        LocationDataService.instance.getLocationById(locationId);
+
+    if (location == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Location details not found')),
+      );
+      return;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => LocationDetailSheet(
+        location: location,
+        initiallySaved: _savedLocationIds.contains(locationId),
       ),
-      (route) => false,
     );
   }
 

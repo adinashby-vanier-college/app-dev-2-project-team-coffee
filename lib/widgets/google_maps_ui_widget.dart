@@ -6,9 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../services/saved_locations_service.dart';
 
 class GoogleMapsUIWidget extends StatefulWidget {
-  final String? initialLocationId;
-
-  const GoogleMapsUIWidget({super.key, this.initialLocationId});
+  const GoogleMapsUIWidget({super.key});
 
   @override
   State<GoogleMapsUIWidget> createState() => _GoogleMapsUIWidgetState();
@@ -18,12 +16,10 @@ class _GoogleMapsUIWidgetState extends State<GoogleMapsUIWidget> {
   late final WebViewController _controller;
   String? _initialUrl;
   final SavedLocationsService _savedLocationsService = SavedLocationsService();
-  String? _pendingLocationId;
 
   @override
   void initState() {
     super.initState();
-    _pendingLocationId = widget.initialLocationId;
     _initializeWebView();
   }
 
@@ -85,8 +81,6 @@ class _GoogleMapsUIWidgetState extends State<GoogleMapsUIWidget> {
             await _loadOSMFile();
             // Load saved locations from Firebase
             await _loadSavedLocations();
-            // Open initial location if requested (from profile page)
-            await _openInitialLocationIfNeeded();
           },
           onWebResourceError: (WebResourceError error) {},
           onNavigationRequest: (NavigationRequest request) {
@@ -117,22 +111,6 @@ class _GoogleMapsUIWidgetState extends State<GoogleMapsUIWidget> {
       ''');
     } catch (e) {
       debugPrint('Error loading saved locations: $e');
-    }
-  }
-
-  Future<void> _openInitialLocationIfNeeded() async {
-    if (_pendingLocationId == null) return;
-    final locationId = _pendingLocationId!;
-    _pendingLocationId = null;
-
-    try {
-      await _controller.runJavaScript('''
-        if (window.openLocationFromFlutter) {
-          window.openLocationFromFlutter("$locationId");
-        }
-      ''');
-    } catch (e) {
-      debugPrint('Error opening initial location: $e');
     }
   }
 
