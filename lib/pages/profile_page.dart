@@ -4,6 +4,8 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/services.dart';
 import '../providers/auth_provider.dart';
 import '../services/storage_service.dart';
+import '../services/saved_locations_service.dart';
+import '../pages/home_page.dart';
 import '../services/user_profile_service.dart';
 import '../models/user_model.dart';
 
@@ -41,6 +43,7 @@ class ProfilePage extends StatefulWidget {
 class _ProfilePageState extends State<ProfilePage> {
   final StorageService _storageService = StorageService();
   final UserProfileService _userProfileService = UserProfileService();
+  final SavedLocationsService _savedLocationsService = SavedLocationsService();
   UserModel? _userProfile;
   bool _isLoading = true;
   bool _isEditingName = false;
@@ -52,11 +55,15 @@ class _ProfilePageState extends State<ProfilePage> {
   // Letters, numbers, and spaces only. Spacing rules are enforced separately.
   static final RegExp _nameRegex = RegExp(r'^[a-zA-Z0-9 ]+$');
 
+  List<String> _savedLocationIds = [];
+  bool _isLoadingSavedLocations = false;
+
   @override
   void initState() {
     super.initState();
     _nameController = TextEditingController();
     _loadUserProfile();
+    _loadSavedLocations();
   }
 
   @override
@@ -82,6 +89,33 @@ class _ProfilePageState extends State<ProfilePage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error loading profile: $e')),
         );
+      }
+    }
+  }
+
+  Future<void> _loadSavedLocations() async {
+    setState(() {
+      _isLoadingSavedLocations = true;
+    });
+
+    try {
+      final ids = await _savedLocationsService.getSavedLocations();
+      if (mounted) {
+        setState(() {
+          _savedLocationIds = ids;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading saved locations: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingSavedLocations = false;
+        });
       }
     }
   }
@@ -312,6 +346,17 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
+  void _openLocationFromProfile(String locationId) {
+    // Navigate to HomePage with the initial location ID so that
+    // GoogleMapsUIWidget can open the same map modal.
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(
+        builder: (context) => HomePage(initialLocationId: locationId),
+      ),
+      (route) => false,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -516,23 +561,136 @@ class _ProfilePageState extends State<ProfilePage> {
                           ),
                         ),
                         const SizedBox(height: 40),
-                        // Placeholder for future features
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade100,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Text(
-                            'Profile features coming soon:\n• Edit username\n• Upload profile picture\n• View saved locations',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(color: Colors.grey),
+                        // Saved Locations Section
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            'Saved locations',
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
                           ),
                         ),
+                        const SizedBox(height: 12),
+                        if (_isLoadingSavedLocations)
+                          const Center(child: CircularProgressIndicator())
+                        else if (_savedLocationIds.isEmpty)
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade100,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Text(
+                              'Saved locations will appear here when you tap the bookmark icon on the map.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(color: Colors.grey),
+                            ),
+                          )
+                        else
+                          ListView.separated(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: _savedLocationIds.length,
+                            separatorBuilder: (_, __) => const SizedBox(height: 8),
+                            itemBuilder: (context, index) {
+                              final locationId = _savedLocationIds[index];
+                              return _SavedLocationCard(
+                                locationId: locationId,
+                                onTap: () => _openLocationFromProfile(locationId),
+                              );
+                            },
+                          ),
                       ],
                     ),
                   ),
                 ),
+    );
+  }
+}
+
+class _SavedLocationCard extends StatelessWidget {
+  final String locationId;
+  final VoidCallback onTap;
+
+  const _SavedLocationCard({
+    required this.locationId,
+    required this.onTap,
+  });
+
+  Map<String, dynamic>? _findLocation() {
+    // LOCATION_DATABASE is defined in the web layer (JS), so on the Dart side
+    // we only have the ID. For now we just show the ID; the full details will
+    // come from the map modal when opened.
+    return null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final location = _findLocation();
+    final title = location != null ? (location['name'] as String? ?? locationId) : locationId;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey.shade200),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.03),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(
+                Icons.place,
+                size: 20,
+                color: Colors.blue,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Tap to view details on the map',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
