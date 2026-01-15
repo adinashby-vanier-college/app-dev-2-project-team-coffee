@@ -69,25 +69,25 @@ const App = () => {
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [isHoursExpanded, setIsHoursExpanded] = useState(false);
   const [hoveredLocationId, setHoveredLocationId] = useState(null);
-  
+
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
-  
+
   // Saved locations state (persisted during runtime)
   const [savedLocations, setSavedLocations] = useState(new Set());
-  
+
   // Send Scene modal state
   const [isSendSceneModalOpen, setIsSendSceneModalOpen] = useState(false);
   const [selectedFriends, setSelectedFriends] = useState(new Set());
-  
+
   // OSM Data State
   const [osmData, setOsmData] = useState(null);
   const [osmSvgElements, setOsmSvgElements] = useState([]);
   const [isLoadingOSM, setIsLoadingOSM] = useState(true);
-  
+
   // Locations State (loaded from Firebase via Flutter)
   const [locations, setLocations] = useState([]);
-  
+
   // Friends State (loaded from Firebase via Flutter)
   const [friendsList, setFriendsList] = useState([]);
 
@@ -121,13 +121,13 @@ const App = () => {
         }
         const xmlText = await response.text();
         const parsed = window.OSMParser.parseOSM(xmlText);
-        
+
         if (!parsed.bounds) {
           throw new Error('OSM file missing bounds');
         }
-        
+
         setOsmData(parsed);
-        
+
         // Categorize ways and render to SVG
         const categorized = window.OSMParser.categorizeWays(parsed.ways);
         const canvasWidth = 3000;
@@ -142,7 +142,7 @@ const App = () => {
         setIsLoadingOSM(false);
       }
     };
-    
+
     loadOSMData();
   }, []);
 
@@ -182,7 +182,7 @@ const App = () => {
   const handleSearchSelect = (location) => {
     setSelectedLocation(location);
     setIsHoursExpanded(false);
-    setSearchQuery(''); 
+    setSearchQuery('');
     setSearchResults([]);
     const newViewState = window.MapService.calculateViewForLocation(location);
     setViewState(newViewState);
@@ -209,35 +209,35 @@ const App = () => {
   // --- ZOOM LOGIC ---
   const handleZoom = (direction) => {
     if (!mapRef.current) return;
-    
+
     setViewState(prev => {
       // Get viewport dimensions
       const viewportWidth = mapRef.current.clientWidth;
       const viewportHeight = mapRef.current.clientHeight;
-      
+
       // Calculate viewport center
       const viewportCenterX = viewportWidth / 2;
       const viewportCenterY = viewportHeight / 2;
-      
+
       // Calculate the map coordinate at the viewport center before zoom
       const mapPointX = (viewportCenterX - prev.x) / prev.scale;
       const mapPointY = (viewportCenterY - prev.y) / prev.scale;
-      
+
       // Calculate new scale
       const newScale = window.MapService.calculateZoom(prev.scale, direction);
-      
+
       // Adjust x and y so the same map point stays at the viewport center after zoom
       const newX = viewportCenterX - (mapPointX * newScale);
       const newY = viewportCenterY - (mapPointY * newScale);
-      
+
       return { ...prev, scale: newScale, x: newX, y: newY };
     });
   };
 
   const handlePinClick = (e, location) => {
-    e.stopPropagation(); 
+    e.stopPropagation();
     setSelectedLocation(location);
-    setIsHoursExpanded(false); 
+    setIsHoursExpanded(false);
   };
 
   const closeSheet = () => {
@@ -284,7 +284,20 @@ const App = () => {
   };
 
   const handleSendScene = () => {
-    // Just close the modal - no actual sending for demo
+    if (selectedFriends.size > 0 && selectedLocation) {
+      const data = {
+        locationId: selectedLocation.id,
+        friendIds: Array.from(selectedFriends)
+      };
+
+      if (window.FlutterSendScene) {
+        window.FlutterSendScene.postMessage(JSON.stringify(data));
+      } else {
+        console.warn('FlutterSendScene channel not available');
+      }
+    }
+
+    // Close modal
     setIsSendSceneModalOpen(false);
     setSelectedFriends(new Set());
   };
@@ -302,12 +315,12 @@ const App = () => {
 
   return (
     <div className="min-h-screen bg-slate-200 flex items-center justify-center p-0 sm:p-4 font-sans">
-      
+
       {/* DEVICE FRAME */}
       <div className="relative w-full max-w-[412px] h-[100dvh] sm:h-[844px] bg-slate-100 overflow-hidden sm:rounded-[3rem] sm:border-[8px] border-slate-900 shadow-2xl text-slate-900 select-none flex flex-col">
-        
+
         {/* --- MAP VIEWPORT --- */}
-        <div 
+        <div
           className="flex-1 relative overflow-hidden cursor-move active:cursor-grabbing bg-[#E5E3DF]"
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
@@ -316,12 +329,12 @@ const App = () => {
           ref={mapRef}
         >
           {/* MAP CONTENT CONTAINER (3000px Canvas) */}
-          <div 
+          <div
             className="absolute origin-top-left transition-transform duration-75 ease-linear"
-            style={{ 
+            style={{
               transform: `translate(${viewState.x}px, ${viewState.y}px) scale(${viewState.scale})`,
-              width: '3000px', 
-              height: '3000px' 
+              width: '3000px',
+              height: '3000px'
             }}
           >
             {/* =====================================================================================
@@ -336,13 +349,13 @@ const App = () => {
                 <defs>
                   {/* City Texture Pattern */}
                   <pattern id="cityGrid" width="20" height="20" patternUnits="userSpaceOnUse" patternTransform="rotate(-15)">
-                    <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#d9d7d3" strokeWidth="0.8"/>
+                    <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#d9d7d3" strokeWidth="0.8" />
                   </pattern>
                 </defs>
-                
+
                 {/* Base City Layer */}
                 <rect width="3000" height="3000" fill="url(#cityGrid)" />
-                
+
                 {/* OSM Rendered Elements */}
                 {osmSvgElements}
               </svg>
@@ -351,7 +364,7 @@ const App = () => {
             {/* =====================================================================================
                NEIGHBORHOOD & DISTRICT LABELS
                ===================================================================================== */}
-            
+
             <div className="absolute top-[1850px] left-[1200px] text-[32px] font-black text-slate-600/25 uppercase tracking-[0.15em] rotate-[-8deg] pointer-events-none" style={{ fontFamily: 'Arial, sans-serif', letterSpacing: '0.15em' }}>Downtown</div>
             <div className="absolute top-[2150px] left-[1600px] text-[26px] font-black text-slate-600/25 uppercase tracking-[0.15em] rotate-[-8deg] pointer-events-none" style={{ fontFamily: 'Arial, sans-serif', letterSpacing: '0.15em' }}>Old Port</div>
             <div className="absolute top-[1350px] left-[1700px] text-[30px] font-black text-slate-600/25 uppercase tracking-[0.15em] rotate-[-8deg] pointer-events-none" style={{ fontFamily: 'Arial, sans-serif', letterSpacing: '0.15em' }}>Plateau</div>
@@ -372,7 +385,7 @@ const App = () => {
               const markerColor = window.MapService.getMarkerColor(loc.type);
               const borderColor = window.MapService.getMarkerBorderColor(loc.type);
               const isSelected = selectedLocation?.id === loc.id;
-              
+
               // Calculate dynamic sizes to keep markers at constant screen size
               // Since markers are inside a scaled container, we scale inversely
               // Base sizes are the desired screen size (small, like real maps)
@@ -387,7 +400,7 @@ const App = () => {
               const baseLabelBorderRadius = 8; // More rounded
               const baseLabelMarginTop = 3;
               const baseDefaultDotSize = 5;
-              
+
               // Scale inversely to counteract container scaling
               const inverseScale = 1 / viewState.scale;
               const pinSize = basePinSize * inverseScale;
@@ -401,13 +414,13 @@ const App = () => {
               const labelBorderRadius = baseLabelBorderRadius * inverseScale;
               const labelMarginTop = baseLabelMarginTop * inverseScale;
               const defaultDotSize = baseDefaultDotSize * inverseScale;
-              
+
               const isHovered = hoveredLocationId === loc.id;
               const isZoomedOut = viewState.scale <= 0.7;
               const showHoverCard = isHovered && isZoomedOut && !isSelected;
-              
+
               return (
-                <div 
+                <div
                   key={loc.id}
                   className="absolute transform -translate-x-1/2 -translate-y-full hover:scale-110 transition-transform duration-200 z-10 cursor-pointer"
                   style={{ left: loc.coordinates.x, top: loc.coordinates.y }}
@@ -418,7 +431,7 @@ const App = () => {
                 >
                   <div className="relative flex flex-col items-center group">
                     {/* Pin */}
-                    <div 
+                    <div
                       className={`rounded-full border-white shadow-lg flex items-center justify-center transition-all duration-200 
                         ${isSelected ? 'bg-blue-600 scale-125 z-50 ring-4 ring-blue-200' : markerColor}
                       `}
@@ -430,17 +443,17 @@ const App = () => {
                       }}
                     >
                       {loc.type === 'restaurant' || loc.type === 'food' ? <Utensils className="text-white" style={{ width: `${iconSize}px`, height: `${iconSize}px` }} /> :
-                       loc.type === 'bar' ? <Beer className="text-white" style={{ width: `${iconSize}px`, height: `${iconSize}px` }} /> :
-                       loc.type === 'shop' ? <ShoppingBag className="text-white" style={{ width: `${iconSize}px`, height: `${iconSize}px` }} /> :
-                       loc.type === 'hotel' ? <Hotel className="text-white" style={{ width: `${iconSize}px`, height: `${iconSize}px` }} /> :
-                       loc.type === 'landmark' || loc.type === 'attraction' ? <Landmark className="text-white" style={{ width: `${iconSize}px`, height: `${iconSize}px` }} /> :
-                       loc.type === 'park' ? <MapPin className="text-white" style={{ width: `${iconSize}px`, height: `${iconSize}px` }} /> :
-                       <div className="bg-white rounded-full" style={{ width: `${defaultDotSize}px`, height: `${defaultDotSize}px` }} />
+                        loc.type === 'bar' ? <Beer className="text-white" style={{ width: `${iconSize}px`, height: `${iconSize}px` }} /> :
+                          loc.type === 'shop' ? <ShoppingBag className="text-white" style={{ width: `${iconSize}px`, height: `${iconSize}px` }} /> :
+                            loc.type === 'hotel' ? <Hotel className="text-white" style={{ width: `${iconSize}px`, height: `${iconSize}px` }} /> :
+                              loc.type === 'landmark' || loc.type === 'attraction' ? <Landmark className="text-white" style={{ width: `${iconSize}px`, height: `${iconSize}px` }} /> :
+                                loc.type === 'park' ? <MapPin className="text-white" style={{ width: `${iconSize}px`, height: `${iconSize}px` }} /> :
+                                  <div className="bg-white rounded-full" style={{ width: `${defaultDotSize}px`, height: `${defaultDotSize}px` }} />
                       }
                     </div>
-                    
+
                     {/* Needle */}
-                    <div 
+                    <div
                       className={`w-0 h-0 border-l-transparent border-r-transparent -mt-0.5 
                          ${isSelected ? 'border-t-blue-600' : borderColor}
                       `}
@@ -451,9 +464,9 @@ const App = () => {
                         borderStyle: 'solid'
                       }}
                     />
-                    
+
                     {/* Label (always visible title card) */}
-                    <div 
+                    <div
                       className="absolute top-full backdrop-blur-sm font-bold whitespace-nowrap pointer-events-none z-30"
                       style={{
                         fontFamily: 'Arial, sans-serif',
@@ -492,9 +505,9 @@ const App = () => {
           <div className="absolute top-4 left-4 right-4 z-30 flex flex-col gap-2">
             <div className="bg-white rounded-full shadow-xl p-3 flex items-center gap-3 border border-slate-100">
               <Search className="w-5 h-5 text-slate-500 ml-1" />
-              <input 
-                type="text" 
-                placeholder="Search Montreal..." 
+              <input
+                type="text"
+                placeholder="Search Montreal..."
                 className="flex-1 bg-transparent outline-none text-slate-800 placeholder-slate-400 text-sm"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -507,37 +520,37 @@ const App = () => {
             </div>
 
             {searchQuery && searchResults.length > 0 && (
-               <div className="bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden max-h-[60vh] overflow-y-auto animate-slide-up-sm">
-                 {searchResults.map((loc, index) => (
-                   <div 
-                     key={loc.id} 
-                     onClick={() => handleSearchSelect(loc)}
-                     className={`p-4 flex items-center gap-3 active:bg-slate-50 border-b border-slate-50 last:border-0 cursor-pointer hover:bg-slate-50 transition-colors`}
-                   >
-                     <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center flex-shrink-0">
-                        <MapPin className="w-5 h-5 text-slate-500" />
-                     </div>
-                     <div className="flex flex-col flex-1">
-                       <span className="font-medium text-slate-900 text-sm">{loc.name}</span>
-                       <span className="text-xs text-slate-500">{loc.category} • {loc.distance}</span>
-                     </div>
-                   </div>
-                 ))}
-               </div>
+              <div className="bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden max-h-[60vh] overflow-y-auto animate-slide-up-sm">
+                {searchResults.map((loc, index) => (
+                  <div
+                    key={loc.id}
+                    onClick={() => handleSearchSelect(loc)}
+                    className={`p-4 flex items-center gap-3 active:bg-slate-50 border-b border-slate-50 last:border-0 cursor-pointer hover:bg-slate-50 transition-colors`}
+                  >
+                    <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center flex-shrink-0">
+                      <MapPin className="w-5 h-5 text-slate-500" />
+                    </div>
+                    <div className="flex flex-col flex-1">
+                      <span className="font-medium text-slate-900 text-sm">{loc.name}</span>
+                      <span className="text-xs text-slate-500">{loc.category} • {loc.distance}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         )}
 
         {/* --- ZOOM CONTROLS (Bottom Right) --- */}
         <div className="absolute right-4 bottom-24 flex flex-col gap-2 z-20">
-          <button 
-            onClick={() => handleZoom('in')} 
+          <button
+            onClick={() => handleZoom('in')}
             className="w-11 h-11 bg-white rounded-full shadow-lg flex items-center justify-center text-slate-600 active:bg-slate-50 border border-slate-100 hover:shadow-xl transition-shadow"
           >
             <Plus className="w-5 h-5" />
           </button>
-          <button 
-            onClick={() => handleZoom('out')} 
+          <button
+            onClick={() => handleZoom('out')}
             className="w-11 h-11 bg-white rounded-full shadow-lg flex items-center justify-center text-slate-600 active:bg-slate-50 border border-slate-100 hover:shadow-xl transition-shadow"
           >
             <Minus className="w-5 h-5" />
@@ -557,16 +570,16 @@ const App = () => {
 
             {/* The Sheet */}
             <div className="relative bg-white w-full rounded-t-3xl shadow-[0_-5px_20px_rgba(0,0,0,0.1)] animate-slide-up max-h-[75%] overflow-y-auto no-scrollbar">
-              
+
               <div className="w-full flex justify-center pt-3 pb-1">
                 <div className="w-12 h-1.5 bg-slate-300 rounded-full" />
               </div>
 
               <div className="p-5 pt-2">
-                
+
                 <div className="flex justify-between items-start mb-1">
                   <h2 className="text-2xl font-bold text-slate-800 pr-2">{selectedLocation.name}</h2>
-                  <button 
+                  <button
                     type="button"
                     onClick={closeSheet}
                     className="p-1.5 bg-slate-100 rounded-full hover:bg-slate-200 active:bg-slate-300 transition-colors flex-shrink-0 cursor-pointer"
@@ -598,21 +611,20 @@ const App = () => {
                 </p>
 
                 <div className="flex gap-4 overflow-x-auto no-scrollbar mb-6 pb-2">
-                  <button 
+                  <button
                     type="button"
                     onClick={handleSaveToggle}
-                    className={`flex-1 min-w-[90px] py-2.5 px-4 rounded-full font-medium text-sm flex flex-col items-center gap-1 transition-colors cursor-pointer relative z-10 ${
-                      savedLocations.has(selectedLocation.id) 
-                        ? 'bg-green-50 border-2 border-green-500 text-green-700 hover:bg-green-100 active:bg-green-200' 
+                    className={`flex-1 min-w-[90px] py-2.5 px-4 rounded-full font-medium text-sm flex flex-col items-center gap-1 transition-colors cursor-pointer relative z-10 ${savedLocations.has(selectedLocation.id)
+                        ? 'bg-green-50 border-2 border-green-500 text-green-700 hover:bg-green-100 active:bg-green-200'
                         : 'bg-slate-50 border-2 border-slate-200 text-slate-700 hover:bg-green-50 hover:border-green-500 hover:text-green-700 active:bg-green-100'
-                    }`}
+                      }`}
                   >
-                    <Bookmark 
+                    <Bookmark
                       className={`w-5 h-5 ${savedLocations.has(selectedLocation.id) ? 'fill-green-600 text-green-600' : ''}`}
                     />
                     <span>Save</span>
                   </button>
-                  <button 
+                  <button
                     type="button"
                     onClick={handleSendSceneClick}
                     className="flex-1 min-w-[90px] bg-slate-50 border-2 border-slate-200 text-slate-700 py-2.5 px-4 rounded-full font-medium text-sm flex flex-col items-center gap-1 hover:bg-red-50 hover:border-red-500 hover:text-red-700 active:bg-red-100 transition-colors cursor-pointer relative z-10"
@@ -675,7 +687,7 @@ const App = () => {
 
                   <div className="flex items-start gap-3">
                     <Globe className="w-5 h-5 text-blue-600 mt-0.5 shrink-0" />
-                    <a 
+                    <a
                       href={`https://www.${selectedLocation.name.toLowerCase().replace(/['\s]/g, '')}.com`}
                       target="_blank"
                       rel="noopener noreferrer"
@@ -684,10 +696,10 @@ const App = () => {
                       www.{selectedLocation.name.toLowerCase().replace(/['\s]/g, '')}.com
                     </a>
                   </div>
-                  
+
                   <div className="flex items-start gap-3">
                     <Phone className="w-5 h-5 text-blue-600 mt-0.5 shrink-0" />
-                    <a 
+                    <a
                       href="tel:+15145550199"
                       className="text-sm text-slate-700 leading-relaxed text-left cursor-pointer hover:opacity-80 active:opacity-70 transition-opacity"
                     >
@@ -713,7 +725,7 @@ const App = () => {
 
         {/* --- SEND SCENE MODAL --- */}
         {isSendSceneModalOpen && (
-          <div 
+          <div
             className="absolute inset-0 z-40 flex items-center justify-center"
             onClick={(e) => {
               // Only close if clicking on the backdrop (not the modal)
@@ -726,7 +738,7 @@ const App = () => {
             <div className="absolute inset-0 bg-black/40 z-0" />
 
             {/* Modal */}
-            <div 
+            <div
               ref={modalRef}
               className="relative bg-white w-full max-w-md mx-4 rounded-3xl shadow-2xl animate-slide-up max-h-[80vh] flex flex-col z-10"
             >
@@ -734,7 +746,7 @@ const App = () => {
               <div className="p-6 border-b border-slate-100">
                 <div className="flex justify-between items-center">
                   <h2 className="text-2xl font-bold text-slate-800">Send Scene™</h2>
-                  <button 
+                  <button
                     onClick={(e) => {
                       e.stopPropagation();
                       handleCancelSendScene();
@@ -762,32 +774,29 @@ const App = () => {
                       <button
                         key={friend.id}
                         onClick={() => handleFriendToggle(friend.id)}
-                        className={`w-full flex items-center gap-3 p-3 rounded-xl transition-colors ${
-                          isSelected 
-                            ? 'bg-blue-50 border-2 border-blue-500' 
+                        className={`w-full flex items-center gap-3 p-3 rounded-xl transition-colors ${isSelected
+                            ? 'bg-blue-50 border-2 border-blue-500'
                             : 'bg-slate-50 border-2 border-transparent hover:bg-slate-100'
-                        }`}
+                          }`}
                       >
                         {/* Avatar */}
-                        <div className={`w-12 h-12 rounded-full flex items-center justify-center font-semibold text-sm flex-shrink-0 ${
-                          isSelected 
-                            ? 'bg-blue-500 text-white' 
+                        <div className={`w-12 h-12 rounded-full flex items-center justify-center font-semibold text-sm flex-shrink-0 ${isSelected
+                            ? 'bg-blue-500 text-white'
                             : 'bg-slate-300 text-slate-600'
-                        }`}>
+                          }`}>
                           {friend.avatar}
                         </div>
-                        
+
                         {/* Name */}
                         <div className="flex-1 text-left">
                           <div className="font-medium text-slate-800">{friend.name}</div>
                         </div>
-                        
+
                         {/* Checkbox */}
-                        <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
-                          isSelected 
-                            ? 'bg-blue-500 border-blue-500' 
+                        <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${isSelected
+                            ? 'bg-blue-500 border-blue-500'
                             : 'border-slate-300'
-                        }`}>
+                          }`}>
                           {isSelected && (
                             <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />

@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class Message {
   final String id;
   final String senderId;
+  final String? locationId; // Optional: ID of the shared location
   final String text;
   final DateTime timestamp;
   final bool read;
@@ -15,6 +16,7 @@ class Message {
     required this.timestamp,
     this.read = false,
     this.readAt,
+    this.locationId,
   });
 
   factory Message.fromFirestore(Map<String, dynamic> data, String id) {
@@ -27,6 +29,7 @@ class Message {
       readAt: data['readAt'] != null
           ? (data['readAt'] as Timestamp).toDate()
           : null,
+      locationId: data['locationId'] as String?,
     );
   }
 
@@ -37,6 +40,7 @@ class Message {
       'timestamp': Timestamp.fromDate(timestamp),
       'read': read,
       'readAt': readAt != null ? Timestamp.fromDate(readAt!) : null,
+      if (locationId != null) 'locationId': locationId,
     };
   }
 }

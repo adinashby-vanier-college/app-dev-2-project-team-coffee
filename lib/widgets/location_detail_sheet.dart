@@ -5,7 +5,9 @@ import 'package:cached_network_image/cached_network_image.dart';
 
 import '../models/location_details.dart';
 import '../providers/saved_locations_provider.dart';
+import '../providers/saved_locations_provider.dart';
 import '../services/friends_service.dart';
+import '../services/chat_service.dart';
 import '../models/user_model.dart';
 
 class LocationDetailSheet extends StatefulWidget {
@@ -160,12 +162,50 @@ class _LocationDetailSheetState extends State<LocationDetailSheet> {
     });
   }
 
-  void _handleSendScene() {
-    // Just close the modal - no actual sending for demo (matching map modal behavior)
+  Future<void> _handleSendScene() async {
+    final selectedFriends = List<String>.from(_selectedFriends);
+    if (selectedFriends.isEmpty) return;
+
+    final chatService = context.read<ChatService>();  // Actually, ChatService is not a provider?
+    // Based on previous files, ChatService is a plain class. Let's instance it or use GetIt if setup (but GetIt isn't fully setup yet).
+    // The previous code in ChatPage instanced it: final ChatService _chatService = ChatService();
+    // So I should do the same here or use a provider if available.
+    // Looking at friendmap_app.dart, ChatService is NOT provided. So I will instance it.
+    
+    final chatServiceInstance = ChatService();
+
     setState(() {
       _isSendSceneModalOpen = false;
       _selectedFriends.clear();
     });
+
+    try {
+      final futures = selectedFriends.map((friendId) async {
+        final conversationId = await chatServiceInstance.getOrCreateConversation(friendId);
+        await chatServiceInstance.sendMessage(
+          conversationId,
+          locationId: widget.location.id,
+          text: null, // No text, just location
+        );
+      });
+
+      await Future.wait(futures);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Scene sent to ${selectedFriends.length} friend${selectedFriends.length == 1 ? '' : 's'}'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error sending scene: $e')),
+        );
+      }
+    }
   }
 
   void _handleCancelSendScene() {

@@ -7,6 +7,10 @@ import '../providers/auth_provider.dart';
 import '../services/chat_service.dart';
 import '../models/message_model.dart';
 import '../models/user_model.dart';
+import '../models/location_details.dart';
+import '../services/locations_service.dart';
+import '../widgets/location_preview_card.dart';
+import '../widgets/location_detail_sheet.dart';
 
 class ConversationDetailPage extends StatefulWidget {
   final String conversationId;
@@ -24,7 +28,6 @@ class ConversationDetailPage extends StatefulWidget {
 
 class _ConversationDetailPageState extends State<ConversationDetailPage> {
   final ChatService _chatService = ChatService();
-  final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
 
   @override
@@ -38,34 +41,8 @@ class _ConversationDetailPageState extends State<ConversationDetailPage> {
 
   @override
   void dispose() {
-    _messageController.dispose();
     _scrollController.dispose();
     super.dispose();
-  }
-
-  Future<void> _sendMessage() async {
-    final text = _messageController.text.trim();
-    if (text.isEmpty) return;
-
-    try {
-      await _chatService.sendMessage(widget.conversationId, text);
-      _messageController.clear();
-      
-      // Scroll to bottom after sending
-      if (_scrollController.hasClients) {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error sending message: $e')),
-        );
-      }
-    }
   }
 
   String _formatMessageTime(DateTime dateTime) {
@@ -85,10 +62,16 @@ class _ConversationDetailPageState extends State<ConversationDetailPage> {
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
     final currentUserId = authProvider.user?.uid ?? '';
-    final displayName = widget.otherUser.name ?? 
-                       widget.otherUser.displayName ?? 
-                       widget.otherUser.email ?? 
-                       'Unknown User';
+    var displayName = widget.otherUser.name;
+    if (displayName == null || displayName.isEmpty) {
+      displayName = widget.otherUser.displayName;
+    }
+    if (displayName == null || displayName.isEmpty) {
+      displayName = widget.otherUser.email;
+    }
+    if (displayName == null || displayName.isEmpty) {
+      displayName = 'Unknown User';
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -99,7 +82,7 @@ class _ConversationDetailPageState extends State<ConversationDetailPage> {
                   ? CachedNetworkImageProvider(widget.otherUser.photoURL!)
                   : null,
               child: widget.otherUser.photoURL == null
-                  ? Text(displayName[0].toUpperCase())
+                  ? Text(displayName.isNotEmpty ? displayName[0].toUpperCase() : '?')
                   : null,
             ),
             const SizedBox(width: 12),
@@ -125,7 +108,14 @@ class _ConversationDetailPageState extends State<ConversationDetailPage> {
 
                 if (messages.isEmpty) {
                   return const Center(
-                    child: Text('No messages yet. Start the conversation!'),
+                    child: Padding(
+                      padding: EdgeInsets.all(32.0),
+                      child: Text(
+                        'No shared locations yet.\nSend a scene from the map to start sharing!',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                    ),
                   );
                 }
 
@@ -139,42 +129,9 @@ class _ConversationDetailPageState extends State<ConversationDetailPage> {
 
                     return Align(
                       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-                      child: Container(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 10,
-                        ),
-                        decoration: BoxDecoration(
-                          color: isMe
-                              ? Theme.of(context).primaryColor
-                              : Colors.grey[300],
-                          borderRadius: BorderRadius.circular(18),
-                        ),
-                        constraints: BoxConstraints(
-                          maxWidth: MediaQuery.of(context).size.width * 0.7,
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              message.text,
-                              style: TextStyle(
-                                color: isMe ? Colors.white : Colors.black87,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              _formatMessageTime(message.timestamp),
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: isMe
-                                    ? Colors.white70
-                                    : Colors.black54,
-                              ),
-                            ),
-                          ],
-                        ),
+                      child: Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: _buildMessageBubble(context, message, isMe),
                       ),
                     );
                   },
@@ -182,46 +139,178 @@ class _ConversationDetailPageState extends State<ConversationDetailPage> {
               },
             ),
           ),
+          // Input area removed as per requirements ("we are not sending any words")
+          // Optional: Add a helper text explaining how to send
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.withOpacity(0.2),
-                  spreadRadius: 1,
-                  blurRadius: 5,
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _messageController,
-                    decoration: const InputDecoration(
-                      hintText: 'Type a message...',
-                      border: InputBorder.none,
-                      contentPadding: EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 10,
-                      ),
-                    ),
-                    maxLines: null,
-                    textCapitalization: TextCapitalization.sentences,
-                    onSubmitted: (_) => _sendMessage(),
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.send),
-                  onPressed: _sendMessage,
-                  color: Theme.of(context).primaryColor,
-                ),
-              ],
+            padding: const EdgeInsets.all(16),
+            color: Colors.grey.shade50,
+            width: double.infinity,
+            child: Text(
+              'Go to a location on the map to share it',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.grey.shade600,
+                fontSize: 12,
+                fontStyle: FontStyle.italic,
+              ),
             ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildMessageBubble(BuildContext context, Message message, bool isMe) {
+    if (message.locationId != null) {
+      return SizedBox(
+        width: MediaQuery.of(context).size.width * 0.75,
+        child: _LocationMessageBubble(
+          locationId: message.locationId!,
+          isMe: isMe,
+          timestamp: message.timestamp,
+        ),
+      );
+    }
+    
+    // Fallback for legacy text messages (if any)
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: 16,
+        vertical: 10,
+      ),
+      decoration: BoxDecoration(
+        color: isMe
+            ? Theme.of(context).primaryColor
+            : Colors.grey[300],
+        borderRadius: BorderRadius.circular(18),
+      ),
+      constraints: BoxConstraints(
+        maxWidth: MediaQuery.of(context).size.width * 0.7,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            message.text,
+            style: TextStyle(
+              color: isMe ? Colors.white : Colors.black87,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            _formatMessageTime(message.timestamp),
+            style: TextStyle(
+              fontSize: 10,
+              color: isMe
+                  ? Colors.white70
+                  : Colors.black54,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LocationMessageBubble extends StatefulWidget {
+  final String locationId;
+  final bool isMe;
+  final DateTime timestamp;
+
+  const _LocationMessageBubble({
+    required this.locationId,
+    required this.isMe,
+    required this.timestamp,
+  });
+
+  @override
+  State<_LocationMessageBubble> createState() => _LocationMessageBubbleState();
+}
+
+class _LocationMessageBubbleState extends State<_LocationMessageBubble> {
+  final LocationsService _locationsService = LocationsService();
+  Map<String, dynamic>? _locationData;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLocation();
+  }
+
+  Future<void> _loadLocation() async {
+    try {
+      final data = await _locationsService.getLocationById(widget.locationId);
+      if (mounted) {
+        setState(() {
+          _locationData = data;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  LocationDetails? _convertToLocationDetails(Map<String, dynamic>? data) {
+    if (data == null) return null;
+    // Basic conversion sufficient for detail sheet
+    return LocationDetails(
+      id: data['id'] ?? widget.locationId,
+      name: data['name'] ?? 'Unknown Location',
+      rating: (data['rating'] as num?)?.toDouble() ?? 0.0,
+      reviews: data['reviews'] ?? '0',
+      price: data['price'],
+      category: data['category'] ?? 'Place',
+      address: data['address'] ?? '',
+      openStatus: data['openStatus'],
+      closeTime: data['closeTime'],
+      phone: data['phone'],
+      website: data['website'],
+      description: data['description'] ?? '',
+      hours: [], // Not critical for bubble, will be re-fetched or handled if needed
+    );
+  }
+
+  void _openLocation(BuildContext context) {
+    if (_locationData == null) return;
+    
+    final location = _convertToLocationDetails(_locationData);
+    if (location != null) {
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (context) => LocationDetailSheet(location: location),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment:
+          widget.isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+      children: [
+        LocationPreviewCard(
+          locationId: widget.locationId,
+          name: _locationData?['name'],
+          address: _locationData?['address'],
+          onTap: () => _openLocation(context),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          DateFormat('HH:mm').format(widget.timestamp),
+          style: const TextStyle(
+            fontSize: 10,
+            color: Colors.grey,
+          ),
+        ),
+      ],
     );
   }
 }

@@ -10,6 +10,7 @@ import '../services/locations_service.dart';
 import '../models/location_details.dart';
 import '../widgets/location_detail_sheet.dart';
 import '../widgets/user_name_editor.dart';
+import '../widgets/location_preview_card.dart';
 
 
 class ProfilePage extends StatefulWidget {
@@ -565,7 +566,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                 separatorBuilder: (_, __) => const SizedBox(height: 8),
                                 itemBuilder: (context, index) {
                                   final locationId = provider.savedLocationIds[index];
-                                  return _SavedLocationCard(
+                              return LocationPreviewCard(
                                     locationId: locationId,
                                     onTap: () => _openLocationFromProfile(locationId),
                                   );
@@ -578,91 +579,6 @@ class _ProfilePageState extends State<ProfilePage> {
                     ),
                   ),
                 ),
-    );
-  }
-}
-
-class _SavedLocationCard extends StatelessWidget {
-  final String locationId;
-  final VoidCallback onTap;
-
-  const _SavedLocationCard({
-    required this.locationId,
-    required this.onTap,
-  });
-
-  Map<String, dynamic>? _findLocation() {
-    // LOCATION_DATABASE is defined in the web layer (JS), so on the Dart side
-    // we only have the ID. For now we just show the ID; the full details will
-    // come from the map modal when opened.
-    return null;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final location = _findLocation();
-    final title = location != null ? (location['name'] as String? ?? locationId) : locationId;
-
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey.shade200),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.03),
-              blurRadius: 6,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: Colors.blue.shade50,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(
-                Icons.place,
-                size: 20,
-                color: Colors.blue,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'Tap to view details on the map',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey.shade600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

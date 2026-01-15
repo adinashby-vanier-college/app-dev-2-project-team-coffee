@@ -138,10 +138,16 @@ class _ChatPageState extends State<ChatPage> {
                     .then((list) => list.isNotEmpty ? list.first : null),
                 builder: (context, userSnapshot) {
                   final otherUser = userSnapshot.data;
-                  final displayName = otherUser?.name ?? 
-                                     otherUser?.displayName ?? 
-                                     otherUser?.email ?? 
-                                     'Unknown User';
+                  var displayName = otherUser?.name;
+                  if (displayName == null || displayName.isEmpty) {
+                    displayName = otherUser?.displayName;
+                  }
+                  if (displayName == null || displayName.isEmpty) {
+                    displayName = otherUser?.email;
+                  }
+                  if (displayName == null || displayName.isEmpty) {
+                    displayName = 'Unknown User';
+                  }
 
                   return ListTile(
                     leading: CircleAvatar(
@@ -149,7 +155,7 @@ class _ChatPageState extends State<ChatPage> {
                           ? CachedNetworkImageProvider(otherUser!.photoURL!)
                           : null,
                       child: otherUser?.photoURL == null
-                          ? Text(displayName[0].toUpperCase())
+                          ? Text(displayName.isNotEmpty ? displayName[0].toUpperCase() : '?')
                           : null,
                     ),
                     title: Text(displayName),

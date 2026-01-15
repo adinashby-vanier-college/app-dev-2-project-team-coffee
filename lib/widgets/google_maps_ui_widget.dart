@@ -8,6 +8,8 @@ import '../providers/saved_locations_provider.dart';
 import '../services/saved_locations_service.dart';
 import '../services/locations_service.dart';
 import '../services/friends_service.dart';
+import '../services/chat_service.dart';
+import '../models/conversation_model.dart';
 import '../utils/locations_initializer.dart';
 
 class GoogleMapsUIWidget extends StatefulWidget {
@@ -55,6 +57,47 @@ class _GoogleMapsUIWidgetState extends State<GoogleMapsUIWidget> {
             // The provider will automatically update via the stream
           } catch (e) {
             debugPrint('Error unsaving location: $e');
+          }
+        },
+      )
+      ..addJavaScriptChannel(
+        'FlutterSendScene',
+        onMessageReceived: (JavaScriptMessage message) async {
+          try {
+            final data = jsonDecode(message.message) as Map<String, dynamic>;
+            final locationId = data['locationId'] as String;
+            final friendIds = List<String>.from(data['friendIds'] as List);
+
+            if (friendIds.isEmpty) return;
+
+            final chatService = ChatService();
+            
+            final futures = friendIds.map((friendId) async {
+              final conversationId = await chatService.getOrCreateConversation(friendId);
+              await chatService.sendMessage(
+                conversationId,
+                locationId: locationId,
+                text: null,
+              );
+            });
+
+            await Future.wait(futures);
+
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Scene sent to ${friendIds.length} friend${friendIds.length == 1 ? '' : 's'}'),
+                  backgroundColor: Colors.green,
+                ),
+              );
+            }
+          } catch (e) {
+            debugPrint('Error sending scene from map: $e');
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                 SnackBar(content: Text('Error sending scene: $e')),
+              );
+            }
           }
         },
       )
