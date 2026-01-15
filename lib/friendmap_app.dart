@@ -11,14 +11,29 @@ import 'pages/sms_code_screen.dart';
 import 'providers/auth_provider.dart';
 import 'providers/phone_auth_provider.dart';
 import 'providers/saved_locations_provider.dart';
+import 'services/friends_service.dart';
+import 'services/notification_service.dart';
+import 'services/friend_request_manager.dart';
 import 'services/phone_auth_service.dart';
-
 import 'pages/landing_page.dart';
 
-class FriendmapApp extends StatelessWidget {
+class FriendmapApp extends StatefulWidget {
   final AppConfig config;
 
   const FriendmapApp({super.key, required this.config});
+
+  @override
+  State<FriendmapApp> createState() => _FriendmapAppState();
+}
+
+class _FriendmapAppState extends State<FriendmapApp> {
+  final NotificationService _notificationService = NotificationService();
+
+  @override
+  void initState() {
+    super.initState();
+    _notificationService.initialize();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -28,10 +43,17 @@ class FriendmapApp extends StatelessWidget {
         ChangeNotifierProvider(
             create: (_) => PhoneAuthProvider(PhoneAuthService())),
         ChangeNotifierProvider(create: (_) => SavedLocationsProvider()),
+        ChangeNotifierProvider(
+          create: (_) => FriendRequestManager(
+            FriendsService(), // You might want to get this from GetIt if available, or just instance it
+            _notificationService,
+          ),
+          lazy: false, // Ensure it starts listening immediately
+        ),
       ],
       child: MaterialApp(
-        title: config.appName,
-        debugShowCheckedModeBanner: !config.environment.isProd,
+        title: widget.config.appName,
+        debugShowCheckedModeBanner: !widget.config.environment.isProd,
         home: const LandingPage(),
         routes: {
           '/friends': (context) => const FriendsPage(),
