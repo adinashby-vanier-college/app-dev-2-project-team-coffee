@@ -70,6 +70,19 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
+  Future<void> signInWithGoogle() async {
+    _isLoading = true;
+    notifyListeners();
+    try {
+      await _authService.signInWithGoogle();
+    } catch (e) {
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   Future<void> signOut() async {
     await _authService.signOut();
   }

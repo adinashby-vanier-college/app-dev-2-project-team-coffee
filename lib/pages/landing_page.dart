@@ -321,8 +321,22 @@ class _LandingPageState extends State<LandingPage> {
                               width: double.infinity,
                               height: 45,
                               child: OutlinedButton.icon(
-                                onPressed: () {
-                                  print('Google Sign In');
+                                onPressed: () async {
+                                  try {
+                                    await context.read<AuthProvider>().signInWithGoogle();
+                                    if (mounted) {
+                                      Navigator.pushReplacementNamed(context, '/home');
+                                    }
+                                  } catch (e) {
+                                    if (mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text('Google Sign-In failed: ${e.toString()}'),
+                                          backgroundColor: Colors.red,
+                                        ),
+                                      );
+                                    }
+                                  }
                                 },
                                 style: OutlinedButton.styleFrom(
                                   foregroundColor: Colors.white,
