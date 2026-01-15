@@ -6,6 +6,8 @@ import '../models/user_model.dart';
 import '../services/user_profile_service.dart';
 import '../pages/landing_page.dart';
 import '../pages/profile_page.dart';
+import '../pages/settings_page.dart';
+
 
 class _ProfileMenuItem extends StatefulWidget {
   final VoidCallback onTap;
@@ -53,6 +55,66 @@ class _ProfileMenuItemState extends State<_ProfileMenuItem> {
               const SizedBox(width: 8),
               Text(
                 'Profile',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: _isHovered ? Colors.blue.shade600 : Colors.black87,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SettingsMenuItem extends StatefulWidget {
+  final VoidCallback onTap;
+
+  const _SettingsMenuItem({required this.onTap});
+
+  @override
+  State<_SettingsMenuItem> createState() => _SettingsMenuItemState();
+}
+
+class _SettingsMenuItemState extends State<_SettingsMenuItem> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: InkWell(
+        onTap: widget.onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 10,
+          ),
+          color: _isHovered ? Colors.blue.shade50 : Colors.transparent,
+          child: Row(
+            children: [
+              Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  color: _isHovered
+                      ? Colors.blue.shade100.withOpacity(0.5)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  Icons.settings,
+                  size: 15,
+                  color: _isHovered ? Colors.blue.shade500 : Colors.grey.shade400,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Settings',
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
@@ -175,6 +237,13 @@ class _UserMenuWidgetState extends State<UserMenuWidget> {
     _closeMenu();
     Navigator.of(context).push(
       MaterialPageRoute(builder: (context) => const ProfilePage()),
+    );
+  }
+
+  void _handleSettings() {
+    _closeMenu();
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (context) => const SettingsPage()),
     );
   }
 
@@ -334,6 +403,9 @@ class _UserMenuWidgetState extends State<UserMenuWidget> {
               children: [
                 _ProfileMenuItem(
                   onTap: _handleProfile,
+                ),
+                _SettingsMenuItem(
+                  onTap: _handleSettings,
                 ),
                 Divider(height: 1, color: Colors.grey.shade200),
                 _LogoutMenuItem(

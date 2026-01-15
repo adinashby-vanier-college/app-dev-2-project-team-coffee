@@ -9,30 +9,8 @@ import '../services/user_profile_service.dart';
 import '../models/user_model.dart';
 import '../services/location_data_service.dart';
 import '../widgets/location_detail_sheet.dart';
+import '../widgets/user_name_editor.dart';
 
-class _MaxLenNotifierFormatter extends TextInputFormatter {
-  final int maxLength;
-  final VoidCallback onLimitHit;
-
-  _MaxLenNotifierFormatter({
-    required this.maxLength,
-    required this.onLimitHit,
-  });
-
-  @override
-  TextEditingValue formatEditUpdate(
-    TextEditingValue oldValue,
-    TextEditingValue newValue,
-  ) {
-    if (newValue.text.length <= maxLength) {
-      return newValue;
-    }
-
-    // User attempted to exceed max length: keep old value but notify.
-    WidgetsBinding.instance.addPostFrameCallback((_) => onLimitHit());
-    return oldValue;
-  }
-}
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -46,25 +24,16 @@ class _ProfilePageState extends State<ProfilePage> {
   final UserProfileService _userProfileService = UserProfileService();
   UserModel? _userProfile;
   bool _isLoading = true;
-  bool _isEditingName = false;
-  bool _isSavingName = false;
   bool _isUploadingPhoto = false;
-  String? _nameError;
-  bool _nameLengthLimitHit = false;
-  late TextEditingController _nameController;
-  // Letters, numbers, and spaces only. Spacing rules are enforced separately.
-  static final RegExp _nameRegex = RegExp(r'^[a-zA-Z0-9 ]+$');
 
   @override
   void initState() {
     super.initState();
-    _nameController = TextEditingController();
     _loadUserProfile();
   }
 
   @override
   void dispose() {
-    _nameController.dispose();
     super.dispose();
   }
 
@@ -76,7 +45,7 @@ class _ProfilePageState extends State<ProfilePage> {
         _userProfile = profile;
         _isLoading = false;
         if (profile != null) {
-          _nameController.text = profile.name ?? '';
+          // Name handling removed
         }
       });
     } catch (e) {
@@ -90,109 +59,6 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
 
-  bool get _isNameValid {
-    final value = _nameController.text;
-    final trimmed = value.trim();
-
-    if (trimmed.isEmpty || trimmed.length > 16) {
-      return false;
-    }
-
-    // Only letters, numbers and spaces allowed in the raw value
-    if (trimmed.isNotEmpty && !_nameRegex.hasMatch(value)) {
-      return false;
-    }
-
-    // Spacing rule: no leading/trailing spaces and no double spaces
-    if (_hasSpacingIssue(value)) {
-      return false;
-    }
-
-    return true;
-  }
-
-  bool _hasSpacingIssue(String value) {
-    if (value.isEmpty) return false;
-    if (value.startsWith(' ') || value.endsWith(' ')) return true;
-    if (value.contains('  ')) return true; // double space anywhere
-    return false;
-  }
-
-  String? _buildNameErrorText() {
-    final raw = _nameController.text;
-    final trimmed = raw.trim();
-    final bool hasInvalidChars =
-        trimmed.isNotEmpty && !_nameRegex.hasMatch(raw);
-    final bool isTooLong = _nameLengthLimitHit || trimmed.length > 16;
-    final bool hasSpacingIssue = _hasSpacingIssue(raw);
-
-    if (!hasInvalidChars && !isTooLong && !hasSpacingIssue) return null;
-
-    final parts = <String>[];
-    if (hasInvalidChars) {
-      parts.add('Only letters and numbers allowed in name.');
-    }
-    if (hasSpacingIssue) {
-      parts.add("Single space only between words. Ex: 'Tim Cook'.");
-    }
-    if (isTooLong) {
-      parts.add('Up to 16 characters allowed.');
-    }
-    return parts.join(' ');
-  }
-
-  Future<void> _saveUserName() async {
-    final newName = _nameController.text.trim();
-    if (_userProfile == null) {
-      return;
-    }
-
-    if (!_isNameValid) {
-      setState(() {
-        _nameError = _buildNameErrorText() ??
-            'Only letters and numbers allowed in name.';
-      });
-      return;
-    }
-
-    setState(() {
-      _isSavingName = true;
-    });
-
-    try {
-      await _userProfileService.updateUserName(newName);
-
-      setState(() {
-        _userProfile = UserModel(
-          uid: _userProfile!.uid,
-          email: _userProfile!.email,
-          displayName: _userProfile!.displayName,
-          photoURL: _userProfile!.photoURL,
-          name: newName,
-          createdAt: _userProfile!.createdAt,
-        );
-        _isEditingName = false;
-      });
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Name updated')),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error updating name: $e')),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isSavingName = false;
-        });
-      }
-    }
-  }
 
   Future<void> _pickAndUploadPhoto({required bool fromCamera}) async {
     if (_isUploadingPhoto) return;
@@ -414,122 +280,21 @@ class _ProfilePageState extends State<ProfilePage> {
                         ),
                         const SizedBox(height: 24),
                       // Username + Edit controls
-                      SizedBox(
-                        width: 320,
-                        child: Stack(
-                          alignment: Alignment.center,
-                          children: [
-                            _isEditingName
-                                ? TextField(
-                                    controller: _nameController,
-                                    textAlign: TextAlign.center,
-                                    maxLength: 16,
-                                    inputFormatters: [
-                                      _MaxLenNotifierFormatter(
-                                        maxLength: 16,
-                                        onLimitHit: () {
-                                          if (!_nameLengthLimitHit) {
-                                            setState(() {
-                                              _nameLengthLimitHit = true;
-                                              _nameError = _buildNameErrorText();
-                                            });
-                                          }
-                                        },
-                                      ),
-                                    ],
-                                    onChanged: (value) {
-                                      setState(() {
-                                        if (value.length < 16) {
-                                          _nameLengthLimitHit = false;
-                                        }
-                                        _nameError = _buildNameErrorText();
-                                      });
-                                    },
-                                    decoration: const InputDecoration(
-                                      hintText: 'Enter your name',
-                                      border: UnderlineInputBorder(),
-                                      isDense: true,
-                                      counterText: '',
-                                    ),
-                                  )
-                                : Text(
-                                    _userProfile!.name?.isNotEmpty == true
-                                        ? _userProfile!.name!
-                                        : 'No name set',
-                                    textAlign: TextAlign.center,
-                                    style: const TextStyle(
-                                      fontSize: 24,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                            if (!_isEditingName)
-                              Positioned(
-                                right: 0,
-                                child: IconButton(
-                                  icon: const Icon(Icons.edit, size: 20),
-                                  tooltip: 'Edit name',
-                                  onPressed: () {
-                                    setState(() {
-                                      _isEditingName = true;
-                                      _nameController.text =
-                                          _userProfile!.name ?? '';
-                                    });
-                                  },
-                                ),
-                              ),
-                          ],
-                        ),
+                      UserNameEditor(
+                        currentName: _userProfile!.name ?? '',
+                        onNameUpdated: (newName) {
+                          setState(() {
+                            _userProfile = UserModel(
+                              uid: _userProfile!.uid,
+                              email: _userProfile!.email,
+                              displayName: _userProfile!.displayName,
+                              photoURL: _userProfile!.photoURL,
+                              name: newName,
+                              createdAt: _userProfile!.createdAt,
+                            );
+                          });
+                        },
                       ),
-                      if (_isEditingName) ...[
-                        const SizedBox(height: 8),
-                        if (_nameError != null) ...[
-                          Text(
-                            _nameError!,
-                            style: const TextStyle(
-                              color: Colors.red,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 6),
-                        ],
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            TextButton(
-                              onPressed: _isSavingName
-                                  ? null
-                                  : () {
-                                      setState(() {
-                                        _isEditingName = false;
-                                        _nameError = null;
-                                        _nameLengthLimitHit = false;
-                                        _nameController.text =
-                                            _userProfile!.name ?? '';
-                                      });
-                                    },
-                              child: const Text('Cancel'),
-                            ),
-                            const SizedBox(width: 8),
-                            ElevatedButton(
-                              onPressed:
-                                  (_isSavingName || !_isNameValid)
-                                      ? null
-                                      : () => _saveUserName(),
-                              child: _isSavingName
-                                  ? const SizedBox(
-                                      width: 16,
-                                      height: 16,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                      ),
-                                    )
-                                  : const Text('Save'),
-                            ),
-                          ],
-                        ),
-                      ],
                         const SizedBox(height: 8),
                         // Email
                         Text(
