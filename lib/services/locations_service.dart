@@ -1,12 +1,20 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 /// Service to manage locations in Firebase Firestore
 class LocationsService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
   static const String collectionName = 'locations';
 
   /// Uploads a location to Firebase with its ID as the document ID
+  /// Requires authentication
   Future<void> uploadLocation(Map<String, dynamic> locationData) async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      throw Exception('Authentication required to upload locations');
+    }
+
     final locationId = locationData['id'] as String;
     if (locationId.isEmpty) {
       throw Exception('Location ID is required');
@@ -19,7 +27,13 @@ class LocationsService {
   }
 
   /// Uploads multiple locations to Firebase
+  /// Requires authentication
   Future<void> uploadLocations(List<Map<String, dynamic>> locations) async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      throw Exception('Authentication required to upload locations');
+    }
+
     final batch = _firestore.batch();
     
     for (final location in locations) {

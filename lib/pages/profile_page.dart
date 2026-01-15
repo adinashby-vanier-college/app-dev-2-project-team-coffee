@@ -9,6 +9,7 @@ import '../services/location_data_service.dart';
 import '../widgets/location_detail_sheet.dart';
 import '../widgets/user_name_editor.dart';
 import '../services/location_awareness_service.dart';
+import '../utils/locations_initializer.dart';
 
 
 class ProfilePage extends StatefulWidget {
@@ -29,6 +30,9 @@ class _ProfilePageState extends State<ProfilePage> {
   Map<String, dynamic>? _currentLocation;
   bool _isLoadingLocation = false;
   String? _locationError;
+
+  // Location upload state
+  bool _isUploadingLocations = false;
 
   @override
   void initState() {
@@ -233,6 +237,43 @@ class _ProfilePageState extends State<ProfilePage> {
             backgroundColor: Colors.red,
           ),
         );
+      }
+    }
+  }
+
+  Future<void> _uploadLocationsToFirebase() async {
+    setState(() {
+      _isUploadingLocations = true;
+    });
+
+    try {
+      final locationsInitializer = LocationsInitializer();
+      final count = await locationsInitializer.initializeLocations();
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Successfully uploaded $count locations to Firebase!'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error uploading locations: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isUploadingLocations = false;
+        });
       }
     }
   }
@@ -511,6 +552,42 @@ class _ProfilePageState extends State<ProfilePage> {
                               );
                             }
                           },
+                        ),
+                        const SizedBox(height: 40),
+                        // Developer/Admin Section - Upload Locations
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            'Developer Tools',
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: _isUploadingLocations ? null : _uploadLocationsToFirebase,
+                            icon: _isUploadingLocations
+                                ? const SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : const Icon(Icons.cloud_upload),
+                            label: Text(_isUploadingLocations 
+                                ? 'Uploading locations...' 
+                                : 'Upload Locations to Firebase'),
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              backgroundColor: Colors.orange,
+                              foregroundColor: Colors.white,
+                            ),
+                          ),
                         ),
                       ],
                     ),

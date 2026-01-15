@@ -22,7 +22,7 @@ service cloud.firestore {
       // Users can create their own document
       allow create: if isOwner(userId);
       
-      // Users can update their own document (including friends list)
+      // Users can update their own document (including friends list and savedLocations)
       allow update: if isOwner(userId);
       
       // Users can update another user's document to add themselves to their friends list
@@ -55,6 +55,20 @@ service cloud.firestore {
         request.resource.data.status is string;
       
       // Users cannot delete friend requests directly
+      allow delete: if false;
+    }
+    
+    // Locations collection
+    match /locations/{locationId} {
+      // Locations are publicly readable (anyone can view locations)
+      allow read: if true;
+      
+      // Only authenticated users can create/update locations
+      // This allows the app to upload location data during initialization
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      
+      // Locations should not be deleted (or only by admins in the future)
       allow delete: if false;
     }
   }
