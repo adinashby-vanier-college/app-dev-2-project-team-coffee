@@ -11,6 +11,10 @@ import '../models/location_details.dart';
 import '../services/locations_service.dart';
 import '../widgets/location_preview_card.dart';
 import '../widgets/location_detail_sheet.dart';
+import '../widgets/moment_preview_card.dart';
+import '../services/moments_service.dart';
+import '../models/moment_model.dart';
+import 'moment_detail_page.dart';
 
 class ConversationDetailPage extends StatefulWidget {
   final String conversationId;
@@ -178,6 +182,17 @@ class _ConversationDetailPageState extends State<ConversationDetailPage> {
       );
     }
     
+    if (message.momentId != null) {
+      return SizedBox(
+        width: MediaQuery.of(context).size.width * 0.75,
+        child: _MomentMessageBubble(
+          momentId: message.momentId!,
+          isMe: isMe,
+          timestamp: message.timestamp,
+        ),
+      );
+    }
+    
     // Fallback for legacy text messages (if any)
     return Container(
       padding: const EdgeInsets.symmetric(
@@ -308,6 +323,99 @@ class _LocationMessageBubbleState extends State<_LocationMessageBubble> {
           address: _locationData?['address'],
           onTap: () => _openLocation(context),
         ),
+        const SizedBox(height: 4),
+        Text(
+          DateFormat('HH:mm').format(widget.timestamp),
+          style: const TextStyle(
+            fontSize: 10,
+            color: Colors.grey,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _MomentMessageBubble extends StatefulWidget {
+  final String momentId;
+  final bool isMe;
+  final DateTime timestamp;
+
+  const _MomentMessageBubble({
+    required this.momentId,
+    required this.isMe,
+    required this.timestamp,
+  });
+
+  @override
+  State<_MomentMessageBubble> createState() => _MomentMessageBubbleState();
+}
+
+class _MomentMessageBubbleState extends State<_MomentMessageBubble> {
+  final MomentsService _momentsService = MomentsService();
+  MomentModel? _moment;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadMoment();
+  }
+
+  Future<void> _loadMoment() async {
+    try {
+      final moment = await _momentsService.getMomentById(widget.momentId);
+      if (mounted) {
+        setState(() {
+          _moment = moment;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  void _openMoment(BuildContext context) {
+    if (_moment == null) return;
+    
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => MomentDetailPage(moment: _moment!),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment:
+          widget.isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+      children: [
+        if (_isLoading)
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          )
+        else
+          MomentPreviewCard(
+            momentId: widget.momentId,
+            moment: _moment,
+            onTap: () => _openMoment(context),
+          ),
         const SizedBox(height: 4),
         Text(
           DateFormat('HH:mm').format(widget.timestamp),

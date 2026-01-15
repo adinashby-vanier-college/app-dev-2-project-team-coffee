@@ -4,6 +4,7 @@ class Message {
   final String id;
   final String senderId;
   final String? locationId; // Optional: ID of the shared location
+  final String? momentId; // Optional: ID of the shared moment
   final String text;
   final DateTime timestamp;
   final bool read;
@@ -17,6 +18,7 @@ class Message {
     this.read = false,
     this.readAt,
     this.locationId,
+    this.momentId,
   });
 
   factory Message.fromFirestore(Map<String, dynamic> data, String id) {
@@ -30,6 +32,7 @@ class Message {
           ? (data['readAt'] as Timestamp).toDate()
           : null,
       locationId: data['locationId'] as String?,
+      momentId: data['momentId'] as String?,
     );
   }
 
@@ -41,6 +44,7 @@ class Message {
       'read': read,
       'readAt': readAt != null ? Timestamp.fromDate(readAt!) : null,
       if (locationId != null) 'locationId': locationId,
+      if (momentId != null) 'momentId': momentId,
     };
   }
 }

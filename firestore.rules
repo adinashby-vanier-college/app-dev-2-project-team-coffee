@@ -129,11 +129,9 @@ service cloud.firestore {
       // Allow reading moments if:
       // 1. User is authenticated and created the moment
       // 2. User is authenticated and is invited
-      // 3. Moment has a shareCode (for web form access - allows unauthenticated reads)
-      allow read: if (isAuthenticated() && 
-        (resource.data.createdBy == request.auth.uid ||
-         request.auth.uid in resource.data.invitedFriends)) ||
-        resource.data.shareCode != null;
+      // 3. User is authenticated (allows friends who received via chat to view)
+      // 4. Moment has a shareCode (for web form access - allows unauthenticated reads)
+      allow read: if isAuthenticated() || resource.data.shareCode != null;
       
       // Authenticated users can create moments (must be the creator)
       allow create: if isAuthenticated() && 
@@ -143,11 +141,18 @@ service cloud.firestore {
       allow update: if isAuthenticated() && 
         resource.data.createdBy == request.auth.uid;
       
-      // Authenticated users can update their own response or invite friends
+      // Authenticated users can update their own response in the responses map
+      // This allows friends who received the moment via chat to RSVP
+      allow update: if isAuthenticated() && 
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['responses']) &&
+        request.resource.data.responses is map &&
+        request.resource.data.responses[request.auth.uid] is string;
+      
+      // Creator or invited friends can update invitedFriends or shareCode
       allow update: if isAuthenticated() && 
         (resource.data.createdBy == request.auth.uid ||
          request.auth.uid in resource.data.invitedFriends) &&
-        request.resource.data.diff(resource.data).affectedKeys().hasAny(['responses', 'invitedFriends', 'shareCode']);
+        request.resource.data.diff(resource.data).affectedKeys().hasAny(['invitedFriends', 'shareCode']);
       
       // Allow updating guestResponses for moments with shareCode (for web form RSVP)
       // This allows unauthenticated users to submit RSVPs via the web form

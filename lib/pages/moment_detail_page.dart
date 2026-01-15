@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
-import 'package:share_plus/share_plus.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../models/moment_model.dart';
 import '../services/moments_service.dart';
 import '../services/friends_service.dart';
+import '../services/chat_service.dart';
+import '../services/locations_service.dart';
 import '../models/user_model.dart';
 
 class MomentDetailPage extends StatefulWidget {
@@ -19,18 +20,45 @@ class MomentDetailPage extends StatefulWidget {
 class _MomentDetailPageState extends State<MomentDetailPage> {
   final MomentsService _momentsService = MomentsService();
   final FriendsService _friendsService = FriendsService();
+  final ChatService _chatService = ChatService();
+  final LocationsService _locationsService = LocationsService();
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  
   late MomentModel _moment;
   List<UserModel> _invitedFriendProfiles = [];
   bool _isLoadingFriends = false;
+  
+  // Edit mode state
+  bool _isEditMode = false;
+  final _titleController = TextEditingController();
+  final _descriptionController = TextEditingController();
+  DateTime _selectedDate = DateTime.now();
+  TimeOfDay _selectedTime = const TimeOfDay(hour: 12, minute: 0);
+  bool _isSaving = false;
+  List<Map<String, dynamic>> _availableLocations = [];
+  bool _isLoadingLocations = false;
 
-  // Firebase Hosting URL for the shareable web form
-  static const String _baseShareUrl = 'https://friendmap-5b654.web.app';
+  bool get _isCreator {
+    final currentUser = _auth.currentUser;
+    return currentUser != null && currentUser.uid == _moment.createdBy;
+  }
 
   @override
   void initState() {
     super.initState();
     _moment = widget.moment;
+    _titleController.text = _moment.title;
+    _descriptionController.text = _moment.description ?? '';
+    _selectedDate = _moment.dateTime;
+    _selectedTime = TimeOfDay.fromDateTime(_moment.dateTime);
     _loadInvitedFriends();
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _descriptionController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadInvitedFriends() async {
@@ -49,34 +77,88 @@ class _MomentDetailPageState extends State<MomentDetailPage> {
     }
   }
 
-  String get _shareUrl {
-    if (_moment.shareCode == null) return '';
-    return '$_baseShareUrl/moment/${_moment.shareCode}';
-  }
+  Future<void> _sendToFriend() async {
+    // Get list of friends
+    final friends = await _friendsService.getFriendProfiles(
+      await _friendsService.getFriendsListOnce(),
+    );
 
-  void _copyShareLink() async {
-    if (_moment.shareCode == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No share link available')),
-      );
+    if (friends.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('You need to add friends first!')),
+        );
+      }
       return;
     }
 
-    await Clipboard.setData(ClipboardData(text: _shareUrl));
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Link copied to clipboard!')),
-      );
-    }
-  }
-
-  void _shareLink() async {
-    if (_moment.shareCode == null) return;
-    
-    await Share.share(
-      'Join me for ${_moment.title} at ${_moment.locationName}!\n\nRSVP here: $_shareUrl',
-      subject: 'You\'re invited to ${_moment.title}',
+    // Show friend picker dialog
+    final selectedFriends = await showDialog<List<UserModel>>(
+      context: context,
+      builder: (context) => _FriendPickerDialog(friends: friends),
     );
+
+    if (selectedFriends == null || selectedFriends.isEmpty || !mounted) return;
+
+    try {
+      int successCount = 0;
+      int failCount = 0;
+
+      for (final friend in selectedFriends) {
+        try {
+          // Get or create conversation with the selected friend
+          final conversationId = await _chatService.getOrCreateConversation(
+            friend.uid,
+          );
+
+          // Send moment card
+          await _chatService.sendMessage(
+            conversationId,
+            momentId: _moment.id,
+          );
+          successCount++;
+        } catch (e) {
+          failCount++;
+          debugPrint('Error sending to ${friend.uid}: $e');
+        }
+      }
+
+      if (mounted) {
+        if (successCount > 0) {
+          if (failCount == 0) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  successCount == 1
+                      ? 'Moment sent to 1 friend!'
+                      : 'Moment sent to $successCount friends!',
+                ),
+              ),
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Sent to $successCount friend${successCount > 1 ? 's' : ''}, $failCount failed',
+                ),
+              ),
+            );
+          }
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Failed to send moment to any friends'),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error sending moment: $e')),
+        );
+      }
+    }
   }
 
   Future<void> _updateMyResponse(String response) async {
@@ -94,6 +176,113 @@ class _MomentDetailPageState extends State<MomentDetailPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error updating response: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _toggleEditMode() async {
+    if (_isEditMode) {
+      // Cancel edit mode - reset to original values
+      setState(() {
+        _isEditMode = false;
+        _titleController.text = _moment.title;
+        _descriptionController.text = _moment.description ?? '';
+        _selectedDate = _moment.dateTime;
+        _selectedTime = TimeOfDay.fromDateTime(_moment.dateTime);
+      });
+    } else {
+      // Enter edit mode
+      setState(() {
+        _isEditMode = true;
+      });
+      await _loadLocations();
+    }
+  }
+
+  Future<void> _loadLocations() async {
+    setState(() => _isLoadingLocations = true);
+    try {
+      final locations = await _locationsService.getAllLocations();
+      setState(() {
+        _availableLocations = locations;
+        _isLoadingLocations = false;
+      });
+    } catch (e) {
+      setState(() => _isLoadingLocations = false);
+      debugPrint('Error loading locations: $e');
+    }
+  }
+
+  Future<void> _selectDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate,
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+    );
+    if (picked != null) {
+      setState(() => _selectedDate = picked);
+    }
+  }
+
+  Future<void> _selectTime() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: _selectedTime,
+    );
+    if (picked != null) {
+      setState(() => _selectedTime = picked);
+    }
+  }
+
+  DateTime get _combinedDateTime {
+    return DateTime(
+      _selectedDate.year,
+      _selectedDate.month,
+      _selectedDate.day,
+      _selectedTime.hour,
+      _selectedTime.minute,
+    );
+  }
+
+  Future<void> _saveChanges() async {
+    if (_titleController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Title cannot be empty')),
+      );
+      return;
+    }
+
+    setState(() => _isSaving = true);
+
+    try {
+      await _momentsService.updateMoment(
+        _moment.id,
+        title: _titleController.text.trim(),
+        description: _descriptionController.text.trim().isEmpty
+            ? null
+            : _descriptionController.text.trim(),
+        dateTime: _combinedDateTime,
+      );
+
+      // Refresh moment data
+      final updated = await _momentsService.getMomentById(_moment.id);
+      if (updated != null && mounted) {
+        setState(() {
+          _moment = updated;
+          _isEditMode = false;
+          _isSaving = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Moment updated successfully!')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isSaving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error updating moment: $e')),
         );
       }
     }
@@ -183,53 +372,47 @@ class _MomentDetailPageState extends State<MomentDetailPage> {
         title: const Text('Moment Details'),
         centerTitle: true,
         actions: [
-          PopupMenuButton<String>(
-            onSelected: (value) {
-              switch (value) {
-                case 'share':
-                  _shareLink();
-                  break;
-                case 'copy':
-                  _copyShareLink();
-                  break;
-                case 'delete':
-                  _deleteMoment();
-                  break;
-              }
-            },
-            itemBuilder: (context) => [
-              const PopupMenuItem(
-                value: 'share',
-                child: Row(
-                  children: [
-                    Icon(Icons.share),
-                    SizedBox(width: 8),
-                    Text('Share'),
-                  ],
+          if (_isEditMode)
+            IconButton(
+              icon: const Icon(Icons.close),
+              onPressed: _toggleEditMode,
+              tooltip: 'Cancel',
+            )
+          else if (_isCreator)
+            PopupMenuButton<String>(
+              onSelected: (value) {
+                switch (value) {
+                  case 'edit':
+                    _toggleEditMode();
+                    break;
+                  case 'delete':
+                    _deleteMoment();
+                    break;
+                }
+              },
+              itemBuilder: (context) => [
+                const PopupMenuItem(
+                  value: 'edit',
+                  child: Row(
+                    children: [
+                      Icon(Icons.edit),
+                      SizedBox(width: 8),
+                      Text('Edit'),
+                    ],
+                  ),
                 ),
-              ),
-              const PopupMenuItem(
-                value: 'copy',
-                child: Row(
-                  children: [
-                    Icon(Icons.copy),
-                    SizedBox(width: 8),
-                    Text('Copy Link'),
-                  ],
+                const PopupMenuItem(
+                  value: 'delete',
+                  child: Row(
+                    children: [
+                      Icon(Icons.delete, color: Colors.red),
+                      SizedBox(width: 8),
+                      Text('Delete', style: TextStyle(color: Colors.red)),
+                    ],
+                  ),
                 ),
-              ),
-              const PopupMenuItem(
-                value: 'delete',
-                child: Row(
-                  children: [
-                    Icon(Icons.delete, color: Colors.red),
-                    SizedBox(width: 8),
-                    Text('Delete', style: TextStyle(color: Colors.red)),
-                  ],
-                ),
-              ),
-            ],
-          ),
+              ],
+            ),
         ],
       ),
       body: SingleChildScrollView(
@@ -237,54 +420,177 @@ class _MomentDetailPageState extends State<MomentDetailPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Title & Status
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    _moment.title,
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
+            if (_isEditMode) ...[
+              // Edit Mode UI
+              TextFormField(
+                controller: _titleController,
+                decoration: InputDecoration(
+                  labelText: 'Event Title',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
+                  prefixIcon: const Icon(Icons.title),
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: _moment.isUpcoming 
-                        ? Colors.green.shade50 
-                        : Colors.grey.shade100,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    _moment.isUpcoming ? 'Upcoming' : 'Past',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: _moment.isUpcoming 
-                          ? Colors.green.shade700 
-                          : Colors.grey.shade600,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            // Description
-            if (_moment.description != null && _moment.description!.isNotEmpty) ...[
-              Text(
-                _moment.description!,
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.grey.shade700,
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _descriptionController,
+                decoration: InputDecoration(
+                  labelText: 'Description (optional)',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  prefixIcon: const Icon(Icons.description),
+                ),
+                maxLines: 3,
+              ),
+              const SizedBox(height: 24),
+              // Date & Time in Edit Mode
+              const Text(
+                'Date & Time',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: InkWell(
+                      onTap: _selectDate,
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey.shade300),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.calendar_today, size: 20),
+                            const SizedBox(width: 8),
+                            Text(
+                              DateFormat('MMM d, yyyy').format(_selectedDate),
+                              style: const TextStyle(fontSize: 16),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: InkWell(
+                      onTap: _selectTime,
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey.shade300),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.access_time, size: 20),
+                            const SizedBox(width: 8),
+                            Text(
+                              _selectedTime.format(context),
+                              style: const TextStyle(fontSize: 16),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              // Save Button
+              SizedBox(
+                width: double.infinity,
+                height: 56,
+                child: ElevatedButton(
+                  onPressed: _isSaving ? null : _saveChanges,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.purple,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  child: _isSaving
+                      ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        )
+                      : const Text(
+                          'Save Changes',
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                ),
+              ),
+              const SizedBox(height: 24),
+            ] else ...[
+              // View Mode UI
+              // Title & Status
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      _moment.title,
+                      style: const TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: _moment.isUpcoming 
+                          ? Colors.green.shade50 
+                          : Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      _moment.isUpcoming ? 'Upcoming' : 'Past',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: _moment.isUpcoming 
+                            ? Colors.green.shade700 
+                            : Colors.grey.shade600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              // Description
+              if (_moment.description != null && _moment.description!.isNotEmpty) ...[
+                Text(
+                  _moment.description!,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey.shade700,
+                  ),
+                ),
+                const SizedBox(height: 20),
+              ],
             ],
 
-            // Date & Time Card
-            Container(
+            if (!_isEditMode) ...[
+              // Date & Time Card
+              Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: Colors.blue.shade50,
@@ -374,58 +680,35 @@ class _MomentDetailPageState extends State<MomentDetailPage> {
             ),
             const SizedBox(height: 24),
 
-            // Share Link Section
-            if (_moment.shareCode != null) ...[
-              const Text(
-                'Share Link',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
+              // Send to Friend Section
+            const Text(
+              'Send to Friend',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
               ),
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        _shareUrl,
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.blue.shade700,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.copy, size: 20),
-                      onPressed: _copyShareLink,
-                      tooltip: 'Copy link',
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.share, size: 20),
-                      onPressed: _shareLink,
-                      tooltip: 'Share',
-                    ),
-                  ],
-                ),
+            ),
+            const SizedBox(height: 12),
+            ElevatedButton.icon(
+              onPressed: _sendToFriend,
+              icon: const Icon(Icons.send),
+              label: const Text('Send Moment to Friend'),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                backgroundColor: const Color(0xFF58ae45),
+                foregroundColor: Colors.white,
               ),
-              const SizedBox(height: 8),
-              Text(
-                'Anyone with this link can RSVP to your moment!',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: Colors.grey.shade600,
-                  fontStyle: FontStyle.italic,
-                ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Share this moment with a friend in chat!',
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.grey.shade600,
+                fontStyle: FontStyle.italic,
               ),
-              const SizedBox(height: 24),
-            ],
+            ),
+            const SizedBox(height: 24),
 
             // RSVP Section
             const Text(
@@ -507,6 +790,7 @@ class _MomentDetailPageState extends State<MomentDetailPage> {
                     : null,
               )),
             ],
+            ],
           ],
         ),
       ),
@@ -539,6 +823,144 @@ class _MomentDetailPageState extends State<MomentDetailPage> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _FriendPickerDialog extends StatefulWidget {
+  final List<UserModel> friends;
+
+  const _FriendPickerDialog({required this.friends});
+
+  @override
+  State<_FriendPickerDialog> createState() => _FriendPickerDialogState();
+}
+
+class _FriendPickerDialogState extends State<_FriendPickerDialog> {
+  final Set<String> _selectedFriendIds = {};
+
+  String _getDisplayName(UserModel friend) {
+    return friend.name ?? friend.displayName ?? friend.email ?? 'Unknown';
+  }
+
+  String _getInitials(UserModel friend) {
+    final name = friend.name ?? friend.displayName;
+    if (name != null && name.isNotEmpty) {
+      return name[0].toUpperCase();
+    }
+    final email = friend.email;
+    if (email != null && email.isNotEmpty) {
+      return email[0].toUpperCase();
+    }
+    return '?';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      child: Container(
+        constraints: const BoxConstraints(maxHeight: 600),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  const Text(
+                    'Select Friends',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const Spacer(),
+                  if (_selectedFriendIds.isNotEmpty)
+                    Text(
+                      '${_selectedFriendIds.length} selected',
+                      style: TextStyle(
+                        color: Colors.grey.shade600,
+                        fontSize: 14,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            Flexible(
+              child: widget.friends.isEmpty
+                  ? const Padding(
+                      padding: EdgeInsets.all(32),
+                      child: Text('No friends available'),
+                    )
+                  : ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: widget.friends.length,
+                      itemBuilder: (context, index) {
+                        final friend = widget.friends[index];
+                        final isSelected = _selectedFriendIds.contains(friend.uid);
+                        final displayName = _getDisplayName(friend);
+                        final initials = _getInitials(friend);
+
+                        return CheckboxListTile(
+                          value: isSelected,
+                          onChanged: (value) {
+                            setState(() {
+                              if (value == true) {
+                                _selectedFriendIds.add(friend.uid);
+                              } else {
+                                _selectedFriendIds.remove(friend.uid);
+                              }
+                            });
+                          },
+                          secondary: CircleAvatar(
+                            backgroundImage: friend.photoURL != null
+                                ? NetworkImage(friend.photoURL!)
+                                : null,
+                            child: friend.photoURL == null
+                                ? Text(initials)
+                                : null,
+                          ),
+                          title: Text(displayName),
+                          subtitle: friend.email != null
+                              ? Text(friend.email!)
+                              : null,
+                        );
+                      },
+                    ),
+            ),
+            const Divider(height: 1),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Cancel'),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton(
+                    onPressed: _selectedFriendIds.isEmpty
+                        ? null
+                        : () {
+                            final selectedFriends = widget.friends
+                                .where((f) => _selectedFriendIds.contains(f.uid))
+                                .toList();
+                            Navigator.pop(context, selectedFriends);
+                          },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF58ae45),
+                      foregroundColor: Colors.white,
+                    ),
+                    child: const Text('Send'),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

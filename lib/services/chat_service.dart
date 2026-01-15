@@ -88,9 +88,9 @@ class ChatService {
     }
   }
 
-  /// Sends a message in a conversation (text or location)
-  Future<void> sendMessage(String conversationId, {String? text, String? locationId}) async {
-    debugPrint('🟢 ChatService.sendMessage: CALLED with conversationId=$conversationId, text=$text, locationId=$locationId');
+  /// Sends a message in a conversation (text, location, or moment)
+  Future<void> sendMessage(String conversationId, {String? text, String? locationId, String? momentId}) async {
+    debugPrint('🟢 ChatService.sendMessage: CALLED with conversationId=$conversationId, text=$text, locationId=$locationId, momentId=$momentId');
     
     final currentUser = _auth.currentUser;
     if (currentUser == null) {
@@ -100,15 +100,15 @@ class ChatService {
     
     debugPrint('🟢 ChatService.sendMessage: User authenticated: ${currentUser.uid}');
 
-    if ((text == null || text.trim().isEmpty) && locationId == null) {
-      debugPrint('ChatService.sendMessage: Message must have text or location');
-      throw Exception('Message must have text or location');
+    if ((text == null || text.trim().isEmpty) && locationId == null && momentId == null) {
+      debugPrint('ChatService.sendMessage: Message must have text, location, or moment');
+      throw Exception('Message must have text, location, or moment');
     }
 
-    final messageText = text ?? (locationId != null ? 'Shared a location' : '');
+    final messageText = text ?? (locationId != null ? 'Shared a location' : momentId != null ? 'Shared a moment' : '');
 
     debugPrint('ChatService.sendMessage: Sending message to conversation $conversationId');
-    debugPrint('ChatService.sendMessage: Message text: $messageText, locationId: $locationId');
+    debugPrint('ChatService.sendMessage: Message text: $messageText, locationId: $locationId, momentId: $momentId');
     debugPrint('ChatService.sendMessage: Sender: ${currentUser.uid}');
 
     // Verify conversation exists and user is a participant
@@ -162,6 +162,10 @@ class ChatService {
     
     if (locationId != null) {
       messageData['locationId'] = locationId;
+    }
+    
+    if (momentId != null) {
+      messageData['momentId'] = momentId;
     }
 
     debugPrint('ChatService.sendMessage: Message data: $messageData');
