@@ -417,6 +417,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                 ),
                                 style: ElevatedButton.styleFrom(
                                   padding: const EdgeInsets.symmetric(vertical: 12),
+                                  foregroundColor: isTracking ? Colors.white : null,
                                   backgroundColor: isTracking ? Colors.red.shade600 : null,
                                 ),
                               ),

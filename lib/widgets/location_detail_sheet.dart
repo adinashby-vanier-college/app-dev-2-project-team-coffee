@@ -25,6 +25,7 @@ class _LocationDetailSheetState extends State<LocationDetailSheet> {
   bool _isSendSceneModalOpen = false;
   final Set<String> _selectedFriends = {};
   final FriendsService _friendsService = FriendsService();
+  Future<List<UserModel>>? _friendsFuture;
 
   Future<void> _toggleSave() async {
     final provider = context.read<SavedLocationsProvider>();
@@ -105,6 +106,8 @@ class _LocationDetailSheetState extends State<LocationDetailSheet> {
         setState(() {
           _selectedFriends.clear();
           _isSendSceneModalOpen = true;
+          // Load friends once when the modal is opened
+          _friendsFuture = _loadFriendsOnce();
         });
       },
       borderRadius: BorderRadius.circular(999),
@@ -137,6 +140,14 @@ class _LocationDetailSheetState extends State<LocationDetailSheet> {
         ),
       ),
     );
+  }
+
+  Future<List<UserModel>> _loadFriendsOnce() async {
+    final friendUids = await _friendsService.getFriendsList().first;
+    if (friendUids.isEmpty) {
+      return [];
+    }
+    return _friendsService.getFriendProfiles(friendUids);
   }
 
   void _handleFriendToggle(String friendId) {
@@ -193,7 +204,7 @@ class _LocationDetailSheetState extends State<LocationDetailSheet> {
     final loc = widget.location;
 
     return Stack(
-      children: [
+      children: <Widget>[
         SafeArea(
           top: true,
           bottom: false,
@@ -448,14 +459,10 @@ class _LocationDetailSheetState extends State<LocationDetailSheet> {
           ),
         ),
         // Send Scene Modal
-        if (_isSendSceneModalOpen)
-          GestureDetector(
-            onTap: _handleCancelSendScene,
-            child: Container(
-              color: Colors.black.withOpacity(0.4),
-              child: Center(
-                child: GestureDetector(
-                  onTap: () {}, // Prevent tap from closing when clicking modal
+        _isSendSceneModalOpen
+            ? Container(
+                color: Colors.black.withOpacity(0.4),
+                child: Center(
                   child: Container(
                     margin: const EdgeInsets.symmetric(horizontal: 16),
                     constraints: const BoxConstraints(maxHeight: 600),
@@ -471,7 +478,10 @@ class _LocationDetailSheetState extends State<LocationDetailSheet> {
                       ],
                     ),
                     child: Column(
-                      mainAxisSize: MainAxisSize.min,
+                      // Match the home-page modal behavior: use full
+                      // available height so the list doesn't re-layout
+                      // and "jump" when selections change.
+                      mainAxisSize: MainAxisSize.max,
                       children: [
                         // Header
                         Padding(
@@ -519,13 +529,12 @@ class _LocationDetailSheetState extends State<LocationDetailSheet> {
                             ),
                           ),
                         ),
-                        // Friends List
-                        Flexible(
-                          child: StreamBuilder<List<UserModel>>(
-                            stream: _friendsService.getFriendProfilesStream(),
+                        // Friends List (loaded once per modal open)
+                        Expanded(
+                          child: FutureBuilder<List<UserModel>>(
+                            future: _friendsFuture ??= _loadFriendsOnce(),
                             builder: (context, snapshot) {
-                              if (snapshot.connectionState ==
-                                  ConnectionState.waiting) {
+                              if (snapshot.connectionState == ConnectionState.waiting) {
                                 return const Padding(
                                   padding: EdgeInsets.all(32),
                                   child: Center(
@@ -563,7 +572,7 @@ class _LocationDetailSheetState extends State<LocationDetailSheet> {
                               }
 
                               return ListView.builder(
-                                shrinkWrap: true,
+                                shrinkWrap: false,
                                 padding: const EdgeInsets.symmetric(horizontal: 16),
                                 itemCount: friends.length,
                                 itemBuilder: (context, index) {
@@ -773,9 +782,8 @@ class _LocationDetailSheetState extends State<LocationDetailSheet> {
                     ),
                   ),
                 ),
-              ),
-            ),
-          ),
+              )
+            : const SizedBox.shrink(),
       ],
     );
   }

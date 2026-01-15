@@ -139,6 +139,7 @@ class _SettingsPageState extends State<SettingsPage> {
                                 ),
                                 style: ElevatedButton.styleFrom(
                                   padding: const EdgeInsets.symmetric(vertical: 12),
+                                  foregroundColor: isTracking ? Colors.white : null,
                                   backgroundColor: isTracking ? Colors.red.shade600 : null,
                                 ),
                               ),
