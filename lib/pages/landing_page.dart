@@ -57,6 +57,98 @@ class _LandingPageState extends State<LandingPage> {
     }
   }
 
+  Future<void> _showPasswordResetDialog() async {
+    final emailController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    return showDialog(
+      context: context,
+      builder: (dialogContext) => Consumer<AuthProvider>(
+        builder: (context, authProvider, _) => AlertDialog(
+          backgroundColor: const Color(0xFF202020),
+          title: const Text(
+            'Reset Password',
+            style: TextStyle(color: Colors.white),
+          ),
+          content: Form(
+            key: formKey,
+            child: TextFormField(
+              controller: emailController,
+              style: const TextStyle(color: Colors.white),
+              keyboardType: TextInputType.emailAddress,
+              decoration: InputDecoration(
+                labelText: 'Email',
+                labelStyle: const TextStyle(color: Colors.white70),
+                hintText: 'Enter your email',
+                hintStyle: const TextStyle(color: Colors.white54),
+                filled: true,
+                fillColor: Colors.black12,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide.none,
+                ),
+                prefixIcon: const Icon(Icons.email_outlined, color: Colors.white70),
+              ),
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Please enter your email';
+                }
+                if (!value.contains('@')) {
+                  return 'Please enter a valid email';
+                }
+                return null;
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: authProvider.isLoading ? null : () => Navigator.of(dialogContext).pop(),
+              child: const Text('Cancel', style: TextStyle(color: Colors.white70)),
+            ),
+            ElevatedButton(
+              onPressed: authProvider.isLoading ? null : () async {
+                if (formKey.currentState!.validate()) {
+                  try {
+                    await authProvider.sendPasswordReset(emailController.text.trim());
+                    if (mounted) {
+                      Navigator.of(dialogContext).pop();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Password reset email sent! Please check your email.'),
+                          duration: Duration(seconds: 5),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                    }
+                  } catch (e) {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Error: ${e.toString().replaceAll(RegExp(r'\[.*?\]'), '').trim()}'),
+                        ),
+                      );
+                    }
+                  }
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF00a83a),
+                foregroundColor: Colors.white,
+              ),
+              child: authProvider.isLoading
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    )
+                  : const Text('Send Reset Link'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isLoading = context.watch<AuthProvider>().isLoading;
@@ -157,6 +249,19 @@ class _LandingPageState extends State<LandingPage> {
                                     color: Colors.white70),
                               ),
                             ),
+                            if (_isLogin) ...[
+                              const SizedBox(height: 10),
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: TextButton(
+                                  onPressed: isLoading ? null : () => _showPasswordResetDialog(),
+                                  child: const Text(
+                                    'Forgot Password?',
+                                    style: TextStyle(color: Colors.white70, fontSize: 14),
+                                  ),
+                                ),
+                              ),
+                            ],
                             const SizedBox(height: 20),
                             SizedBox(
                               width: double.infinity,

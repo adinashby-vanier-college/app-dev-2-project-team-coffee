@@ -84,7 +84,6 @@ flutter:
     - lib/assets/FriendMap.png
     - lib/googleMapsUI/index.html
     - lib/googleMapsUI/index.css
-    - lib/googleMapsUI/locations.js
     - lib/googleMapsUI/mapService.js
     - lib/googleMapsUI/osmParser.js
     - lib/googleMapsUI/osmRenderer.jsx

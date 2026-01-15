@@ -40,18 +40,54 @@ class PhoneAuthProvider extends ChangeNotifier {
           notifyListeners();
         },
         onVerificationCompleted: (credential) async {
+          // This callback is invoked in two situations:
+          // 1 - Instant verification: phone number can be instantly verified
+          // 2 - Auto-retrieval: Google Play services automatically detected the SMS
           try {
             await _service.signInWithCredential(credential);
             step = PhoneAuthStep.verified;
+            isLoading = false;
+            notifyListeners();
           } catch (e) {
-            errorMessage = 'Auto-verification failed: $e';
+            if (e is FirebaseAuthException) {
+              // Handle specific error codes
+              switch (e.code) {
+                case 'invalid-verification-code':
+                case 'invalid-credential':
+                  errorMessage = 'The verification code entered was invalid.';
+                  break;
+                case 'too-many-requests':
+                  errorMessage = 'Too many requests. Please try again later.';
+                  break;
+                default:
+                  errorMessage = e.message ?? 'Auto-verification failed. Please try again.';
+              }
+            } else {
+              errorMessage = 'Auto-verification failed: $e';
+            }
             step = PhoneAuthStep.error;
+            isLoading = false;
+            notifyListeners();
           }
-          isLoading = false;
-          notifyListeners();
         },
         onVerificationFailed: (exception) {
-          errorMessage = exception.message ?? 'Verification failed';
+          // Handle specific Firebase error codes as per the guide
+          switch (exception.code) {
+            case 'invalid-phone-number':
+            case 'invalid-verification-code':
+            case 'invalid-credential':
+              errorMessage = 'Invalid phone number format. Please check and try again.';
+              break;
+            case 'too-many-requests':
+              errorMessage = 'Too many requests. Please try again later.';
+              break;
+            case 'missing-activity-for-recaptcha':
+            case 'missing-recaptcha-token':
+              errorMessage = 'reCAPTCHA verification requires an activity. Please try again.';
+              break;
+            default:
+              errorMessage = exception.message ?? 'Verification failed. Please try again.';
+          }
           step = PhoneAuthStep.error;
           isLoading = false;
           notifyListeners();
@@ -94,7 +130,18 @@ class PhoneAuthProvider extends ChangeNotifier {
       );
       step = PhoneAuthStep.verified;
     } on FirebaseAuthException catch (e) {
-      errorMessage = e.message ?? 'Invalid code';
+      // Handle specific Firebase error codes
+      switch (e.code) {
+        case 'invalid-verification-code':
+        case 'invalid-credential':
+          errorMessage = 'The verification code entered was invalid.';
+          break;
+        case 'too-many-requests':
+          errorMessage = 'Too many requests. Please try again later.';
+          break;
+        default:
+          errorMessage = e.message ?? 'Invalid code. Please try again.';
+      }
       step = PhoneAuthStep.error;
     } catch (e) {
       errorMessage = 'Something went wrong: $e';
