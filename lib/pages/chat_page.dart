@@ -111,10 +111,33 @@ class _ChatPageState extends State<ChatPage> {
           }
 
           if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
+            debugPrint('ChatPage: Stream error: ${snapshot.error}');
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Error loading conversations: ${snapshot.error}',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Colors.red),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Check console logs for details',
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                  ],
+                ),
+              ),
+            );
           }
 
           final conversations = snapshot.data ?? [];
+          debugPrint('ChatPage: Displaying ${conversations.length} conversations');
 
           if (conversations.isEmpty) {
             return const Center(

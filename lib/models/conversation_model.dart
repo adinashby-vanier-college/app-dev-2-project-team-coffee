@@ -20,16 +20,29 @@ class Conversation {
   });
 
   factory Conversation.fromFirestore(Map<String, dynamic> data, String id) {
+    // Ensure required fields exist with fallbacks
+    final participants = data['participants'] != null
+        ? List<String>.from(data['participants'] as List)
+        : <String>[];
+    
+    final createdAt = data['createdAt'] != null
+        ? (data['createdAt'] as Timestamp).toDate()
+        : DateTime.now();
+    
+    final updatedAt = data['updatedAt'] != null
+        ? (data['updatedAt'] as Timestamp).toDate()
+        : DateTime.now();
+    
     return Conversation(
       id: id,
-      participants: List<String>.from(data['participants'] as List),
+      participants: participants,
       lastMessage: data['lastMessage'] as String?,
       lastMessageTime: data['lastMessageTime'] != null
           ? (data['lastMessageTime'] as Timestamp).toDate()
           : null,
       lastMessageSenderId: data['lastMessageSenderId'] as String?,
-      createdAt: (data['createdAt'] as Timestamp).toDate(),
-      updatedAt: (data['updatedAt'] as Timestamp).toDate(),
+      createdAt: createdAt,
+      updatedAt: updatedAt,
     );
   }
 

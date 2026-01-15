@@ -64,21 +64,40 @@ class _GoogleMapsUIWidgetState extends State<GoogleMapsUIWidget> {
         'FlutterSendScene',
         onMessageReceived: (JavaScriptMessage message) async {
           try {
+            debugPrint('🔵🔵🔵 GoogleMapsUIWidget: FlutterSendScene channel triggered!');
+            debugPrint('🔵 GoogleMapsUIWidget: Raw message: ${message.message}');
+            debugPrint('🔵 GoogleMapsUIWidget: Message type: ${message.message.runtimeType}');
             final data = jsonDecode(message.message) as Map<String, dynamic>;
             final locationId = data['locationId'] as String;
             final friendIds = List<String>.from(data['friendIds'] as List);
 
-            if (friendIds.isEmpty) return;
+            debugPrint('🔵 GoogleMapsUIWidget: Parsed data - locationId: $locationId, friendIds: $friendIds');
+            
+            if (friendIds.isEmpty) {
+              debugPrint('🔵 GoogleMapsUIWidget: No friends selected, returning');
+              return;
+            }
 
             final chatService = ChatService();
             
             final futures = friendIds.map((friendId) async {
-              final conversationId = await chatService.getOrCreateConversation(friendId);
-              await chatService.sendMessage(
-                conversationId,
-                locationId: locationId,
-                text: null,
-              );
+              try {
+                debugPrint('GoogleMapsUIWidget: Getting or creating conversation with friend $friendId');
+                final conversationId = await chatService.getOrCreateConversation(friendId);
+                debugPrint('GoogleMapsUIWidget: Conversation ID: $conversationId');
+                
+                debugPrint('GoogleMapsUIWidget: Sending message with locationId: $locationId');
+                await chatService.sendMessage(
+                  conversationId,
+                  locationId: locationId,
+                  text: null,
+                );
+                debugPrint('GoogleMapsUIWidget: Message sent successfully to friend $friendId');
+              } catch (e, stackTrace) {
+                debugPrint('GoogleMapsUIWidget: Error sending to friend $friendId: $e');
+                debugPrint('GoogleMapsUIWidget: Stack trace: $stackTrace');
+                rethrow;
+              }
             });
 
             await Future.wait(futures);
@@ -91,11 +110,16 @@ class _GoogleMapsUIWidgetState extends State<GoogleMapsUIWidget> {
                 ),
               );
             }
-          } catch (e) {
-            debugPrint('Error sending scene from map: $e');
+          } catch (e, stackTrace) {
+            debugPrint('GoogleMapsUIWidget: Error in FlutterSendScene handler: $e');
+            debugPrint('GoogleMapsUIWidget: Stack trace: $stackTrace');
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
-                 SnackBar(content: Text('Error sending scene: $e')),
+                SnackBar(
+                  content: Text('Error sending scene: ${e.toString()}'),
+                  backgroundColor: Colors.red,
+                  duration: const Duration(seconds: 5),
+                ),
               );
             }
           }

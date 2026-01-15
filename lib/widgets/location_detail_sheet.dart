@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -164,13 +165,14 @@ class _LocationDetailSheetState extends State<LocationDetailSheet> {
 
   Future<void> _handleSendScene() async {
     final selectedFriends = List<String>.from(_selectedFriends);
-    if (selectedFriends.isEmpty) return;
+    if (selectedFriends.isEmpty) {
+      debugPrint('LocationDetailSheet: No friends selected, cannot send scene');
+      return;
+    }
 
-    final chatService = context.read<ChatService>();  // Actually, ChatService is not a provider?
-    // Based on previous files, ChatService is a plain class. Let's instance it or use GetIt if setup (but GetIt isn't fully setup yet).
-    // The previous code in ChatPage instanced it: final ChatService _chatService = ChatService();
-    // So I should do the same here or use a provider if available.
-    // Looking at friendmap_app.dart, ChatService is NOT provided. So I will instance it.
+    debugPrint('🚀 LocationDetailSheet: _handleSendScene called with ${selectedFriends.length} friends');
+    debugPrint('🚀 LocationDetailSheet: Selected friends: $selectedFriends');
+    debugPrint('🚀 LocationDetailSheet: Location ID: ${widget.location.id}');
     
     final chatServiceInstance = ChatService();
 
@@ -181,12 +183,23 @@ class _LocationDetailSheetState extends State<LocationDetailSheet> {
 
     try {
       final futures = selectedFriends.map((friendId) async {
-        final conversationId = await chatServiceInstance.getOrCreateConversation(friendId);
-        await chatServiceInstance.sendMessage(
-          conversationId,
-          locationId: widget.location.id,
-          text: null, // No text, just location
-        );
+        try {
+          debugPrint('LocationDetailSheet: Getting or creating conversation with friend $friendId');
+          final conversationId = await chatServiceInstance.getOrCreateConversation(friendId);
+          debugPrint('LocationDetailSheet: Conversation ID: $conversationId');
+          
+          debugPrint('LocationDetailSheet: Sending message with locationId: ${widget.location.id}');
+          await chatServiceInstance.sendMessage(
+            conversationId,
+            locationId: widget.location.id,
+            text: null, // No text, just location
+          );
+          debugPrint('LocationDetailSheet: Message sent successfully to friend $friendId');
+        } catch (e, stackTrace) {
+          debugPrint('LocationDetailSheet: Error sending to friend $friendId: $e');
+          debugPrint('LocationDetailSheet: Stack trace: $stackTrace');
+          rethrow;
+        }
       });
 
       await Future.wait(futures);
@@ -199,10 +212,16 @@ class _LocationDetailSheetState extends State<LocationDetailSheet> {
           ),
         );
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
+      debugPrint('LocationDetailSheet: Error in _handleSendScene: $e');
+      debugPrint('LocationDetailSheet: Stack trace: $stackTrace');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error sending scene: $e')),
+          SnackBar(
+            content: Text('Error sending scene: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+          ),
         );
       }
     }
