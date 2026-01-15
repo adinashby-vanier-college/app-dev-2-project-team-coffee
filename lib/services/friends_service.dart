@@ -285,24 +285,42 @@ class FriendsService {
   /// Gets user profiles for a list of friend UIDs.
   Future<List<UserModel>> getFriendProfiles(List<String> friendUids) async {
     if (friendUids.isEmpty) {
+      debugPrint('LOG-FRIENDS: getFriendProfiles called with empty friendUids');
       return [];
     }
 
+    debugPrint('LOG-FRIENDS: getFriendProfiles called with ${friendUids.length} friend UIDs');
+
     // Firestore 'in' queries are limited to 10 items, so we need to batch
     final List<UserModel> profiles = [];
-    for (var i = 0; i < friendUids.length; i += 10) {
-      final batch = friendUids.skip(i).take(10).toList();
-      final snapshot = await _firestore
-          .collection('users')
-          .where(FieldPath.documentId, whereIn: batch)
-          .get();
+    try {
+      for (var i = 0; i < friendUids.length; i += 10) {
+        final batch = friendUids.skip(i).take(10).toList();
+        debugPrint('LOG-FRIENDS: Querying batch ${i ~/ 10 + 1} with ${batch.length} UIDs');
+        
+        final snapshot = await _firestore
+            .collection('users')
+            .where(FieldPath.documentId, whereIn: batch)
+            .get();
 
-      for (var doc in snapshot.docs) {
-        profiles.add(UserModel.fromFirestore(doc.data()!, doc.id));
+        debugPrint('LOG-FRIENDS: Batch query returned ${snapshot.docs.length} documents');
+        
+        for (var doc in snapshot.docs) {
+          try {
+            profiles.add(UserModel.fromFirestore(doc.data()!, doc.id));
+          } catch (e) {
+            debugPrint('LOG-FRIENDS: Error parsing user ${doc.id}: $e');
+          }
+        }
       }
+      
+      debugPrint('LOG-FRIENDS: getFriendProfiles returning ${profiles.length} profiles');
+      return profiles;
+    } catch (e, stackTrace) {
+      debugPrint('LOG-FRIENDS: ERROR in getFriendProfiles: $e');
+      debugPrint('LOG-FRIENDS: Stack trace: $stackTrace');
+      rethrow;
     }
-
-    return profiles;
   }
 
   /// Stream of friend profiles for the current user.

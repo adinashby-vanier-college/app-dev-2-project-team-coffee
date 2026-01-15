@@ -17,6 +17,7 @@ service cloud.firestore {
       allow read: if isOwner(userId);
       
       // Users can read other users' documents (for searching and viewing friends)
+      // This covers both individual document reads (get) and queries (list)
       allow read: if isAuthenticated();
       
       // Users can create their own document
