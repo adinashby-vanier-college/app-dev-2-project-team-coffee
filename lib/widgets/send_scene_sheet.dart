@@ -218,7 +218,11 @@ class _SendSceneSheetState extends State<SendSceneSheet> {
                                   const SizedBox(width: 12),
                                   Expanded(
                                     child: Text(
-                                      friend.name ?? friend.displayName ?? 'Unknown',
+                                      friend.name?.isNotEmpty == true
+                                          ? friend.name!
+                                          : (friend.displayName?.isNotEmpty == true
+                                              ? friend.displayName!
+                                              : (friend.email ?? 'Unknown')),
                                       style: const TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF334155)),
                                     ),
                                   ),

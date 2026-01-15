@@ -523,6 +523,25 @@ const App = () => {
   };
 
   const handleSendScene = () => {
+    if (!selectedLocation || selectedFriends.size === 0) {
+      return;
+    }
+    
+    // Prepare data to send to Flutter
+    const sceneData = {
+      locationId: selectedLocation.id,
+      friendIds: Array.from(selectedFriends)
+    };
+    
+    // Send to Flutter via JavaScript channel
+    if (window.FlutterSendScene) {
+      window.FlutterSendScene.postMessage(JSON.stringify(sceneData));
+      console.log('Sent scene to Flutter:', sceneData);
+    } else {
+      console.error('FlutterSendScene channel not available');
+    }
+    
+    // Close modal and reset selection
     setIsSendSceneModalOpen(false);
     setSelectedFriends(new Set());
   };
@@ -1003,7 +1022,9 @@ const App = () => {
                           {friend.avatar}
                         </div>
                         <div style={{ flex: 1, textAlign: 'left' }}>
-                          <div style={{ fontWeight: '500', color: '#1e293b' }}>{friend.name}</div>
+                          <div style={{ fontWeight: '500', color: '#1e293b' }}>
+                            {friend.name || friend.email || 'Unknown'}
+                          </div>
                         </div>
                       <div style={{
                         width: '24px',

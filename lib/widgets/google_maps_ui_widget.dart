@@ -9,6 +9,7 @@ import '../services/saved_locations_service.dart';
 import '../services/locations_service.dart';
 import '../utils/locations_initializer.dart';
 import '../services/friends_service.dart';
+import '../services/chat_service.dart';
 import '../models/user_model.dart';
 
 class GoogleMapsUIWidget extends StatefulWidget {
@@ -73,6 +74,35 @@ class _GoogleMapsUIWidgetState extends State<GoogleMapsUIWidget> {
         onMessageReceived: (JavaScriptMessage message) async {
           debugPrint('LOG-WEBVIEW: FlutterGetFriends requested');
           await _sendFriendsToWebView();
+        },
+      )
+      ..addJavaScriptChannel(
+        'FlutterSendScene',
+        onMessageReceived: (JavaScriptMessage message) async {
+          try {
+            debugPrint('LOG-WEBVIEW: FlutterSendScene received: ${message.message}');
+            final data = jsonDecode(message.message) as Map<String, dynamic>;
+            final locationId = data['locationId'] as String;
+            final friendIds = List<String>.from(data['friendIds'] as List);
+            
+            debugPrint('LOG-WEBVIEW: Sending scene - locationId: $locationId, friendIds: $friendIds');
+            
+            final chatService = ChatService();
+            
+            for (final friendId in friendIds) {
+              final conversationId = await chatService.getOrCreateConversation(friendId);
+              await chatService.sendMessage(
+                conversationId,
+                locationId: locationId,
+              );
+              debugPrint('LOG-WEBVIEW: Sent scene to friend $friendId in conversation $conversationId');
+            }
+            
+            debugPrint('LOG-WEBVIEW: Successfully sent scene to ${friendIds.length} friends');
+          } catch (e, stackTrace) {
+            debugPrint('LOG-WEBVIEW: ERROR sending scene: $e');
+            debugPrint('LOG-WEBVIEW: Stack trace: $stackTrace');
+          }
         },
       )
       ..addJavaScriptChannel(
@@ -156,13 +186,39 @@ class _GoogleMapsUIWidgetState extends State<GoogleMapsUIWidget> {
       final friendProfiles = await _friendsService.getFriendProfiles(friendUids);
       debugPrint('LOG-WEBVIEW: Loaded ${friendProfiles.length} friend profiles');
       
+      // Helper function to get display name with email fallback
+      String getDisplayName(UserModel friend) {
+        if (friend.name?.isNotEmpty == true) {
+          return friend.name!;
+        }
+        if (friend.displayName?.isNotEmpty == true) {
+          return friend.displayName!;
+        }
+        return friend.email ?? 'Unknown';
+      }
+
+      // Helper function to get initials
+      String getInitials(UserModel friend) {
+        final displayName = getDisplayName(friend);
+        if (displayName.isEmpty || displayName == 'Unknown') {
+          return '?';
+        }
+        final trimmed = displayName.trim();
+        final parts = trimmed.split(' ');
+        if (parts.length >= 2) {
+          return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+        }
+        return trimmed[0].toUpperCase();
+      }
+
       // Convert friend profiles to JSON format expected by JavaScript
       final friendsJson = jsonEncode(
         friendProfiles.map((friend) => {
           'id': friend.uid,
-          'name': friend.name ?? friend.displayName ?? 'Unknown',
+          'name': getDisplayName(friend),
           'photoURL': friend.photoURL ?? '',
           'email': friend.email ?? '',
+          'avatar': getInitials(friend),
         }).toList(),
       );
       
