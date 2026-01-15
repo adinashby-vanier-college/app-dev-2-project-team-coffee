@@ -6,8 +6,10 @@ import '../models/user_model.dart';
 import '../providers/auth_provider.dart';
 import '../services/friends_service.dart' show FriendsService, FriendRequest;
 import '../services/user_profile_service.dart';
+import '../services/chat_service.dart';
 import '../widgets/nav_bar.dart';
 import '../widgets/user_menu_widget.dart';
+import 'conversation_detail_page.dart';
 
 class FriendsPage extends StatefulWidget {
   const FriendsPage({Key? key}) : super(key: key);
@@ -19,6 +21,7 @@ class FriendsPage extends StatefulWidget {
 class _FriendsPageState extends State<FriendsPage> {
   final FriendsService _friendsService = FriendsService();
   final UserProfileService _userProfileService = UserProfileService();
+  final ChatService _chatService = ChatService();
   final TextEditingController _searchController = TextEditingController();
   List<UserModel> _searchResults = [];
   bool _isSearching = false;
@@ -129,6 +132,30 @@ class _FriendsPageState extends State<FriendsPage> {
     }
   }
 
+  Future<void> _startChat(UserModel friend) async {
+    try {
+      final conversationId = await _chatService.getOrCreateConversation(friend.uid);
+      
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ConversationDetailPage(
+              conversationId: conversationId,
+              otherUser: friend,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error starting chat: $e')),
+        );
+      }
+    }
+  }
+
   Widget _buildFriendRequestTile(FriendRequest request, UserModel? fromUser) {
     final displayName = fromUser?.name ?? fromUser?.email ?? 'Unknown User';
     final initial = displayName.isNotEmpty ? displayName[0].toUpperCase() : '?';
@@ -172,6 +199,12 @@ class _FriendsPageState extends State<FriendsPage> {
         ),
         title: Text(displayName),
         subtitle: Text(friend.email ?? ''),
+        trailing: IconButton(
+          icon: const Icon(Icons.chat),
+          onPressed: () => _startChat(friend),
+          tooltip: 'Start chat',
+        ),
+        onTap: () => _startChat(friend),
       ),
     );
   }

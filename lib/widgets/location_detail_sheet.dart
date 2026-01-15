@@ -108,7 +108,10 @@ class _LocationDetailSheetState extends State<LocationDetailSheet> {
                           ],
                         ),
                         const SizedBox(height: 8),
-                        Row(
+                        Wrap(
+                          spacing: 6,
+                          runSpacing: 4,
+                          crossAxisAlignment: WrapCrossAlignment.center,
                           children: [
                             Text(
                               loc.rating.toStringAsFixed(1),
@@ -117,8 +120,8 @@ class _LocationDetailSheetState extends State<LocationDetailSheet> {
                                 fontSize: 14,
                               ),
                             ),
-                            const SizedBox(width: 4),
                             Row(
+                              mainAxisSize: MainAxisSize.min,
                               children: List.generate(
                                 5,
                                 (i) => Icon(
@@ -130,7 +133,6 @@ class _LocationDetailSheetState extends State<LocationDetailSheet> {
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 6),
                             Text(
                               '(${loc.reviews} reviews)',
                               style: TextStyle(
@@ -138,7 +140,6 @@ class _LocationDetailSheetState extends State<LocationDetailSheet> {
                                 color: Colors.grey.shade600,
                               ),
                             ),
-                            const SizedBox(width: 6),
                             Text(
                               '• ${loc.category}',
                               style: TextStyle(
@@ -147,8 +148,7 @@ class _LocationDetailSheetState extends State<LocationDetailSheet> {
                               ),
                             ),
                             if (loc.price != null &&
-                                loc.price!.isNotEmpty) ...[
-                              const SizedBox(width: 6),
+                                loc.price!.isNotEmpty)
                               Text(
                                 loc.price!,
                                 style: TextStyle(
@@ -156,7 +156,6 @@ class _LocationDetailSheetState extends State<LocationDetailSheet> {
                                   color: Colors.grey.shade600,
                                 ),
                               ),
-                            ],
                           ],
                         ),
                         const SizedBox(height: 12),
