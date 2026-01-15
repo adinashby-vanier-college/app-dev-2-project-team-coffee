@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import '../models/user_model.dart';
 
 enum FriendRequestStatus {
@@ -227,11 +228,45 @@ class FriendsService {
   }
 
   /// Gets the list of friend UIDs for the current user.
+  /// Gets the list of friend UIDs for the current user once.
+  Future<List<String>> getFriendsListOnce() async {
+    final currentUser = _auth.currentUser;
+    if (currentUser == null) {
+      debugPrint('LOG-FRIENDS: getFriendsListOnce called but currentUser is NULL');
+      return [];
+    }
+    debugPrint('LOG-FRIENDS: getFriendsListOnce called for user ${currentUser.uid}');
+
+    try {
+      final snapshot = await _firestore
+          .collection('users')
+          .doc(currentUser.uid)
+          .get();
+      
+      if (!snapshot.exists) {
+        debugPrint('LOG-FRIENDS: User document does not exist for ${currentUser.uid}');
+        return [];
+      }
+      
+      final data = snapshot.data()!;
+      final friends = data['friends'] as List<dynamic>? ?? [];
+      final result = friends.map((e) => e.toString()).toList();
+      debugPrint('LOG-FRIENDS: Found ${result.length} friends for ${currentUser.uid}');
+      return result;
+    } catch (e) {
+      debugPrint('LOG-FRIENDS: Error fetching friends list: $e');
+      return [];
+    }
+  }
+
+  /// Gets the list of friend UIDs for the current user.
   Stream<List<String>> getFriendsList() {
     final currentUser = _auth.currentUser;
     if (currentUser == null) {
+      debugPrint('LOG-FRIENDS: getFriendsList called but currentUser is NULL');
       return Stream.value([]);
     }
+    debugPrint('LOG-FRIENDS: getFriendsList called for user ${currentUser.uid}');
 
     return _firestore
         .collection('users')

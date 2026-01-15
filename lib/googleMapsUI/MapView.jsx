@@ -76,10 +76,6 @@ const App = () => {
   // Saved locations state (persisted during runtime)
   const [savedLocations, setSavedLocations] = useState(new Set());
 
-  // Send Scene modal state
-  const [isSendSceneModalOpen, setIsSendSceneModalOpen] = useState(false);
-  const [selectedFriends, setSelectedFriends] = useState(new Set());
-
   // OSM Data State
   const [osmData, setOsmData] = useState(null);
   const [osmSvgElements, setOsmSvgElements] = useState([]);
@@ -88,11 +84,7 @@ const App = () => {
   // Locations State (loaded from Firebase via Flutter)
   const [locations, setLocations] = useState([]);
 
-  // Friends State (loaded from Firebase via Flutter)
-  const [friendsList, setFriendsList] = useState([]);
-
   const mapRef = useRef(null);
-  const modalRef = useRef(null);
   const currentDay = new Date().toLocaleDateString('en-US', { weekday: 'long' });
 
   // --- INITIALIZE MAP VIEW (Center and zoom out) ---
@@ -159,18 +151,6 @@ const App = () => {
       setLocations(queuedLocations || []);
     }
 
-    // Set up function to receive friends from Flutter
-    window.loadFriendsFromFlutter = (friendsData) => {
-      console.log('Received friends from Flutter:', friendsData?.length || 0);
-      setFriendsList(friendsData || []);
-    };
-
-    // Check if there's queued friends data from before React was ready
-    if (window._friendsQueue && window._friendsQueue.length > 0) {
-      const queuedFriends = window._friendsQueue.shift();
-      console.log('Loading queued friends:', queuedFriends?.length || 0);
-      setFriendsList(queuedFriends || []);
-    }
   }, []);
 
   // --- SEARCH LOGIC ---
@@ -263,48 +243,13 @@ const App = () => {
   };
 
   const handleSendSceneClick = () => {
-    setSelectedFriends(new Set());
-    setIsSendSceneModalOpen(true);
-    // Request fresh friends list from Flutter
-    if (window.FlutterGetFriends) {
-      window.FlutterGetFriends.postMessage('refresh');
-    }
-  };
-
-  const handleFriendToggle = (friendId) => {
-    setSelectedFriends(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(friendId)) {
-        newSet.delete(friendId);
+    if (selectedLocation) {
+      if (window.FlutterShowSendSceneModal) {
+        window.FlutterShowSendSceneModal.postMessage(selectedLocation.id);
       } else {
-        newSet.add(friendId);
-      }
-      return newSet;
-    });
-  };
-
-  const handleSendScene = () => {
-    if (selectedFriends.size > 0 && selectedLocation) {
-      const data = {
-        locationId: selectedLocation.id,
-        friendIds: Array.from(selectedFriends)
-      };
-
-      if (window.FlutterSendScene) {
-        window.FlutterSendScene.postMessage(JSON.stringify(data));
-      } else {
-        console.warn('FlutterSendScene channel not available');
+        console.warn('FlutterShowSendSceneModal channel not available');
       }
     }
-
-    // Close modal
-    setIsSendSceneModalOpen(false);
-    setSelectedFriends(new Set());
-  };
-
-  const handleCancelSendScene = () => {
-    setIsSendSceneModalOpen(false);
-    setSelectedFriends(new Set());
   };
 
   const handleAddressClick = (address) => {
@@ -615,8 +560,8 @@ const App = () => {
                     type="button"
                     onClick={handleSaveToggle}
                     className={`flex-1 min-w-[90px] py-2.5 px-4 rounded-full font-medium text-sm flex flex-col items-center gap-1 transition-colors cursor-pointer relative z-10 ${savedLocations.has(selectedLocation.id)
-                        ? 'bg-green-50 border-2 border-green-500 text-green-700 hover:bg-green-100 active:bg-green-200'
-                        : 'bg-slate-50 border-2 border-slate-200 text-slate-700 hover:bg-green-50 hover:border-green-500 hover:text-green-700 active:bg-green-100'
+                      ? 'bg-green-50 border-2 border-green-500 text-green-700 hover:bg-green-100 active:bg-green-200'
+                      : 'bg-slate-50 border-2 border-slate-200 text-slate-700 hover:bg-green-50 hover:border-green-500 hover:text-green-700 active:bg-green-100'
                       }`}
                   >
                     <Bookmark
@@ -723,111 +668,6 @@ const App = () => {
           </div>
         )}
 
-        {/* --- SEND SCENE MODAL --- */}
-        {isSendSceneModalOpen && (
-          <div
-            className="absolute inset-0 z-40 flex items-center justify-center"
-            onClick={(e) => {
-              // Only close if clicking on the backdrop (not the modal)
-              if (modalRef.current && !modalRef.current.contains(e.target)) {
-                handleCancelSendScene();
-              }
-            }}
-          >
-            {/* Backdrop */}
-            <div className="absolute inset-0 bg-black/40 z-0" />
-
-            {/* Modal */}
-            <div
-              ref={modalRef}
-              className="relative bg-white w-full max-w-md mx-4 rounded-3xl shadow-2xl animate-slide-up max-h-[80vh] flex flex-col z-10"
-            >
-              {/* Header */}
-              <div className="p-6 border-b border-slate-100">
-                <div className="flex justify-between items-center">
-                  <h2 className="text-2xl font-bold text-slate-800">Send Scene™</h2>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleCancelSendScene();
-                    }}
-                    className="p-1.5 bg-slate-100 rounded-full hover:bg-slate-200 active:bg-slate-300 transition-colors cursor-pointer"
-                    type="button"
-                  >
-                    <X className="w-5 h-5 text-slate-500 pointer-events-none" />
-                  </button>
-                </div>
-                <p className="text-sm text-slate-500 mt-1">Select friends to share with</p>
-              </div>
-
-              {/* Friends List */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-2">
-                {friendsList.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-8 text-center">
-                    <p className="text-slate-500 text-sm">No friends yet</p>
-                    <p className="text-slate-400 text-xs mt-1">Add friends to share locations with them</p>
-                  </div>
-                ) : (
-                  friendsList.map((friend) => {
-                    const isSelected = selectedFriends.has(friend.id);
-                    return (
-                      <button
-                        key={friend.id}
-                        onClick={() => handleFriendToggle(friend.id)}
-                        className={`w-full flex items-center gap-3 p-3 rounded-xl transition-colors ${isSelected
-                            ? 'bg-blue-50 border-2 border-blue-500'
-                            : 'bg-slate-50 border-2 border-transparent hover:bg-slate-100'
-                          }`}
-                      >
-                        {/* Avatar */}
-                        <div className={`w-12 h-12 rounded-full flex items-center justify-center font-semibold text-sm flex-shrink-0 ${isSelected
-                            ? 'bg-blue-500 text-white'
-                            : 'bg-slate-300 text-slate-600'
-                          }`}>
-                          {friend.avatar}
-                        </div>
-
-                        {/* Name */}
-                        <div className="flex-1 text-left">
-                          <div className="font-medium text-slate-800">{friend.name}</div>
-                        </div>
-
-                        {/* Checkbox */}
-                        <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${isSelected
-                            ? 'bg-blue-500 border-blue-500'
-                            : 'border-slate-300'
-                          }`}>
-                          {isSelected && (
-                            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                            </svg>
-                          )}
-                        </div>
-                      </button>
-                    );
-                  })
-                )}
-              </div>
-
-              {/* Footer Buttons */}
-              <div className="p-4 border-t border-slate-100 flex gap-3">
-                <button
-                  onClick={handleCancelSendScene}
-                  className="flex-1 py-3 px-4 bg-white border-2 border-slate-200 text-slate-700 rounded-xl font-medium hover:bg-slate-50 active:bg-slate-100 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSendScene}
-                  className="flex-1 py-3 px-4 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 active:bg-blue-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  disabled={selectedFriends.size === 0}
-                >
-                  Send {selectedFriends.size > 0 && `(${selectedFriends.size})`}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
 
       </div>
 
