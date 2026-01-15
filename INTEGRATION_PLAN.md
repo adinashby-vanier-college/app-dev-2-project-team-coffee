@@ -70,3 +70,4 @@ The project already includes `google_maps_flutter: ^2.7.0` in `pubspec.yaml`, so
 - Location data structure is intentionally simple for easy migration
 - Animation timing (2.5s) matches the original React component
 - All styling colors match the original design specification
+

@@ -6,6 +6,8 @@ import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../providers/saved_locations_provider.dart';
 import '../services/saved_locations_service.dart';
+import '../services/locations_service.dart';
+import '../utils/locations_initializer.dart';
 
 class GoogleMapsUIWidget extends StatefulWidget {
   const GoogleMapsUIWidget({super.key});
@@ -18,6 +20,7 @@ class _GoogleMapsUIWidgetState extends State<GoogleMapsUIWidget> {
   late final WebViewController _controller;
   String? _initialUrl;
   final SavedLocationsService _savedLocationsService = SavedLocationsService();
+  final LocationsService _locationsService = LocationsService();
 
   @override
   void initState() {
@@ -74,6 +77,8 @@ class _GoogleMapsUIWidgetState extends State<GoogleMapsUIWidget> {
           onPageFinished: (String url) async {
             // Load OSM file and inject it into the WebView
             await _loadOSMFile();
+            // Load locations from Firebase and inject into WebView
+            await _loadLocationsFromFirebase();
             // Load saved locations from Firebase (will be sent via provider listener)
             _sendSavedLocationsToWebView();
           },
@@ -144,10 +149,56 @@ class _GoogleMapsUIWidgetState extends State<GoogleMapsUIWidget> {
     }
   }
 
+  Future<void> _loadLocationsFromFirebase() async {
+    try {
+      // Check if locations exist, if not initialize them
+      final initializer = LocationsInitializer();
+      final locationsExist = await initializer.locationsExist();
+      
+      if (!locationsExist) {
+        debugPrint('No locations found in Firebase. Initializing...');
+        try {
+          final count = await initializer.initializeLocations();
+          debugPrint('Successfully initialized $count locations in Firebase');
+        } catch (e) {
+          debugPrint('Error initializing locations: $e');
+          return;
+        }
+      }
+      
+      final locations = await _locationsService.getAllLocations();
+      
+      if (locations.isEmpty) {
+        debugPrint('No locations found in Firebase after initialization');
+        return;
+      }
+      
+      // Convert locations to JSON and inject into WebView
+      final locationsJson = jsonEncode(locations);
+      
+      await _controller.runJavaScript('''
+        if (window.loadLocationsFromFlutter) {
+          try {
+            const locationsData = $locationsJson;
+            window.loadLocationsFromFlutter(locationsData);
+          } catch (e) {
+            console.error('Error loading locations from Flutter:', e);
+          }
+        } else {
+          // Store locations in a queue if the function isn't ready yet
+          window._locationsQueue = window._locationsQueue || [];
+          window._locationsQueue.push($locationsJson);
+        }
+      ''');
+    } catch (e) {
+      debugPrint('Error loading locations from Firebase: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     // Listen to saved locations changes and update the WebView
-    final savedLocations = context.watch<SavedLocationsProvider>().savedLocationIds;
+    context.watch<SavedLocationsProvider>().savedLocationIds;
     // Send updated locations to WebView after build
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {

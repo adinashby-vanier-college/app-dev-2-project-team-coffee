@@ -85,6 +85,9 @@ const App = () => {
   const [osmSvgElements, setOsmSvgElements] = useState([]);
   const [isLoadingOSM, setIsLoadingOSM] = useState(true);
   
+  // Locations State (loaded from Firebase via Flutter)
+  const [locations, setLocations] = useState([]);
+  
   // Mock friends list
   const friendsList = [
     { id: 1, name: 'Sarah Chen', avatar: 'SC' },
@@ -152,11 +155,25 @@ const App = () => {
     loadOSMData();
   }, []);
 
+  // --- LOAD LOCATIONS FROM FLUTTER ---
+  useEffect(() => {
+    // Function to receive locations from Flutter
+    window.loadLocationsFromFlutter = (locationsData) => {
+      setLocations(locationsData || []);
+    };
+    
+    // Check if there's queued locations data from before React was ready
+    if (window._locationsQueue && window._locationsQueue.length > 0) {
+      const queuedLocations = window._locationsQueue.shift();
+      setLocations(queuedLocations || []);
+    }
+  }, []);
+
   // --- SEARCH LOGIC ---
   useEffect(() => {
-    const results = window.MapService.searchLocations(window.LOCATION_DATABASE, searchQuery);
+    const results = window.MapService.searchLocations(locations, searchQuery);
     setSearchResults(results);
-  }, [searchQuery]);
+  }, [searchQuery, locations]);
 
   const handleSearchSelect = (location) => {
     setSelectedLocation(location);
@@ -343,7 +360,7 @@ const App = () => {
             <div className="absolute top-[2580px] left-[800px] text-[18px] font-black text-slate-600/25 uppercase tracking-[0.15em] rotate-[-8deg] pointer-events-none" style={{ fontFamily: 'Arial, sans-serif', letterSpacing: '0.15em' }}>Les Cours Pointe St. Charles</div>
 
             {/* -- MARKERS -- */}
-            {window.LOCATION_DATABASE.map((loc) => {
+            {locations.map((loc) => {
               const markerColor = window.MapService.getMarkerColor(loc.type);
               const borderColor = window.MapService.getMarkerBorderColor(loc.type);
               const isSelected = selectedLocation?.id === loc.id;

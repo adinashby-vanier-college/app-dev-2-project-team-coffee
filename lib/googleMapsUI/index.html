@@ -53,194 +53,12 @@
     
     <script type="text/javascript">
 // ============================================================================
-// LOCATIONS.JS - Location Database
+// LOCATIONS - Now loaded from Firebase via Flutter
+// window.LOCATION_DATABASE is no longer used - locations are loaded via
+// window.loadLocationsFromFlutter() which is called from Flutter
 // ============================================================================
-window.LOCATION_DATABASE = [
-  {
-    id: 'mtl-mount-royal',
-    name: 'Mount Royal Park',
-    type: 'park',
-    rating: 4.9,
-    reviews: '45,000',
-    price: 'Free',
-    category: 'Park',
-    address: 'Mount Royal',
-    openStatus: 'Open',
-    closeTime: '11 PM',
-    distance: '1.2 km',
-    coordinates: { x: 1100, y: 1000 },
-    description: 'Iconic mountain park offering panoramic views of the city, walking trails, and the famous cross.',
-    hours: [
-      { day: 'Monday', time: '6:00 AM – 11:00 PM' },
-      { day: 'Tuesday', time: '6:00 AM – 11:00 PM' },
-      { day: 'Wednesday', time: '6:00 AM – 11:00 PM' },
-      { day: 'Thursday', time: '6:00 AM – 11:00 PM' },
-      { day: 'Friday', time: '6:00 AM – 11:00 PM' },
-      { day: 'Saturday', time: '6:00 AM – 11:00 PM' },
-      { day: 'Sunday', time: '6:00 AM – 11:00 PM' }
-    ]
-  },
-  {
-    id: 'mtl-schwartz',
-    name: "Schwartz's Deli",
-    type: 'restaurant',
-    rating: 4.6,
-    reviews: '18,421',
-    price: '$$',
-    category: 'Deli',
-    address: '3895 St Laurent Blvd',
-    openStatus: 'Open',
-    closeTime: '11 PM',
-    distance: '2.2 km',
-    coordinates: { x: 1520, y: 1300 },
-    description: 'The institution. Smoked meat, cherry coke, pickles.',
-    hours: [
-      { day: 'Monday', time: '11:00 AM – 11:00 PM' },
-      { day: 'Tuesday', time: '11:00 AM – 11:00 PM' },
-      { day: 'Wednesday', time: '11:00 AM – 11:00 PM' },
-      { day: 'Thursday', time: '11:00 AM – 11:00 PM' },
-      { day: 'Friday', time: '11:00 AM – 11:00 PM' },
-      { day: 'Saturday', time: '11:00 AM – 11:00 PM' },
-      { day: 'Sunday', time: '11:00 AM – 11:00 PM' }
-    ]
-  },
-  {
-    id: 'mtl-notre-dame',
-    name: 'Notre-Dame Basilica',
-    type: 'landmark',
-    rating: 4.9,
-    reviews: '35,000',
-    price: '$$',
-    category: 'Basilica',
-    address: '110 Notre-Dame St W',
-    openStatus: 'Closes soon',
-    closeTime: '4:30 PM',
-    distance: '1.8 km',
-    coordinates: { x: 1600, y: 2200 },
-    description: 'Gothic Revival masterpiece with stunning interior.',
-    hours: [
-      { day: 'Monday', time: '9:00 AM – 4:30 PM' },
-      { day: 'Tuesday', time: '9:00 AM – 4:30 PM' },
-      { day: 'Wednesday', time: '9:00 AM – 4:30 PM' },
-      { day: 'Thursday', time: '9:00 AM – 4:30 PM' },
-      { day: 'Friday', time: '9:00 AM – 4:30 PM' },
-      { day: 'Saturday', time: '9:00 AM – 4:30 PM' },
-      { day: 'Sunday', time: '9:00 AM – 4:30 PM' }
-    ]
-  },
-  {
-    id: 'mtl-mcgill',
-    name: 'McGill University',
-    type: 'landmark',
-    rating: 4.8,
-    reviews: '15,000',
-    price: 'Free',
-    category: 'University',
-    address: '845 Sherbrooke St W',
-    openStatus: 'Open',
-    closeTime: '',
-    distance: '0.8 km',
-    coordinates: { x: 1050, y: 1650 },
-    description: 'Prestigious university with beautiful historic campus.',
-    hours: [{ day: 'Monday', time: '24 Hours' }]
-  },
-  {
-    id: 'mtl-dieu-du-ciel',
-    name: 'Dieu du Ciel!',
-    type: 'bar',
-    rating: 4.8,
-    reviews: '4,500',
-    price: '$$',
-    category: 'Microbrewery',
-    address: '29 Laurier Ave W',
-    openStatus: 'Open',
-    closeTime: '3 AM',
-    distance: '3.5 km',
-    coordinates: { x: 1400, y: 950 },
-    description: 'Legendary craft brewery with exceptional Belgian-style beers.',
-    hours: [
-      { day: 'Monday', time: '3:00 PM – 3:00 AM' },
-      { day: 'Tuesday', time: '3:00 PM – 3:00 AM' },
-      { day: 'Wednesday', time: '3:00 PM – 3:00 AM' },
-      { day: 'Thursday', time: '3:00 PM – 3:00 AM' },
-      { day: 'Friday', time: '3:00 PM – 3:00 AM' },
-      { day: 'Saturday', time: '3:00 PM – 3:00 AM' },
-      { day: 'Sunday', time: '3:00 PM – 3:00 AM' }
-    ]
-  },
-  {
-    id: 'mtl-st-viateur',
-    name: 'St-Viateur Bagel',
-    type: 'food',
-    rating: 4.9,
-    reviews: '15,600',
-    price: '$',
-    category: 'Bakery',
-    address: '263 Rue Saint-Viateur O',
-    openStatus: 'Open 24 hours',
-    closeTime: '',
-    distance: '3.8 km',
-    coordinates: { x: 1350, y: 850 },
-    description: 'The 24/7 wood-fired bagel temple.',
-    hours: [
-      { day: 'Monday', time: '24 Hours' },
-      { day: 'Tuesday', time: '24 Hours' },
-      { day: 'Wednesday', time: '24 Hours' },
-      { day: 'Thursday', time: '24 Hours' },
-      { day: 'Friday', time: '24 Hours' },
-      { day: 'Saturday', time: '24 Hours' },
-      { day: 'Sunday', time: '24 Hours' }
-    ]
-  },
-  {
-    id: 'mtl-parc-lafontaine',
-    name: 'Parc La Fontaine',
-    type: 'park',
-    rating: 4.8,
-    reviews: '12,000',
-    price: 'Free',
-    category: 'Park',
-    address: 'Plateau-Mont-Royal',
-    openStatus: 'Open',
-    closeTime: '11 PM',
-    distance: '3.0 km',
-    coordinates: { x: 2000, y: 1400 },
-    description: 'The big park. Duck ponds and summer theater.',
-    hours: [
-      { day: 'Monday', time: '6:00 AM – 11:00 PM' },
-      { day: 'Tuesday', time: '6:00 AM – 11:00 PM' },
-      { day: 'Wednesday', time: '6:00 AM – 11:00 PM' },
-      { day: 'Thursday', time: '6:00 AM – 11:00 PM' },
-      { day: 'Friday', time: '6:00 AM – 11:00 PM' },
-      { day: 'Saturday', time: '6:00 AM – 11:00 PM' },
-      { day: 'Sunday', time: '6:00 AM – 11:00 PM' }
-    ]
-  },
-  {
-    id: 'mtl-place-ville-marie',
-    name: 'Place Ville Marie',
-    type: 'landmark',
-    rating: 4.6,
-    reviews: '2,000',
-    price: 'Free',
-    category: 'Office Tower',
-    address: '1 Place Ville Marie',
-    openStatus: 'Open',
-    closeTime: '6 PM',
-    distance: '0.4 km',
-    coordinates: { x: 1200, y: 1950 },
-    description: 'Iconic cruciform tower defining the skyline.',
-    hours: [
-      { day: 'Monday', time: '9:00 AM – 6:00 PM' },
-      { day: 'Tuesday', time: '9:00 AM – 6:00 PM' },
-      { day: 'Wednesday', time: '9:00 AM – 6:00 PM' },
-      { day: 'Thursday', time: '9:00 AM – 6:00 PM' },
-      { day: 'Friday', time: '9:00 AM – 6:00 PM' },
-      { day: 'Saturday', time: '10:00 AM – 5:00 PM' },
-      { day: 'Sunday', time: 'Closed' }
-    ]
-  }
-];
+// Initialize locations queue for data that arrives before React is ready
+window._locationsQueue = window._locationsQueue || [];
     </script>
 
     <script type="text/javascript">
@@ -425,6 +243,9 @@ const App = () => {
   const [osmData, setOsmData] = useState(null);
   const [osmSvgElements, setOsmSvgElements] = useState([]);
   const [isLoadingOSM, setIsLoadingOSM] = useState(true);
+  
+  // Locations State (loaded from Firebase via Flutter)
+  const [locations, setLocations] = useState([]);
 
   const mapRef = useRef(null);
   const currentDay = new Date().toLocaleDateString('en-US', { weekday: 'long' });
@@ -535,10 +356,24 @@ const App = () => {
     return () => clearTimeout(timeout);
   }, []);
 
+  // --- LOAD LOCATIONS FROM FLUTTER ---
   useEffect(() => {
-    const results = window.MapService.searchLocations(window.LOCATION_DATABASE, searchQuery);
+    // Function to receive locations from Flutter
+    window.loadLocationsFromFlutter = (locationsData) => {
+      setLocations(locationsData || []);
+    };
+    
+    // Check if there's queued locations data from before React was ready
+    if (window._locationsQueue && window._locationsQueue.length > 0) {
+      const queuedLocations = window._locationsQueue.shift();
+      setLocations(queuedLocations || []);
+    }
+  }, []);
+
+  useEffect(() => {
+    const results = window.MapService.searchLocations(locations, searchQuery);
     setSearchResults(results);
-  }, [searchQuery]);
+  }, [searchQuery, locations]);
 
   // Load saved locations from Firebase when component mounts
   useEffect(() => {
@@ -764,7 +599,7 @@ const App = () => {
             <div style={{ position: 'absolute', top: '2150px', left: '1600px', fontSize: '26px', fontWeight: '900', color: 'rgba(71, 85, 105, 0.25)', textTransform: 'uppercase', letterSpacing: '0.15em', transform: 'rotate(-8deg)', pointerEvents: 'none', fontFamily: 'Arial, sans-serif' }}>Old Port</div>
             <div style={{ position: 'absolute', top: '1350px', left: '1700px', fontSize: '30px', fontWeight: '900', color: 'rgba(71, 85, 105, 0.25)', textTransform: 'uppercase', letterSpacing: '0.15em', transform: 'rotate(-8deg)', pointerEvents: 'none', fontFamily: 'Arial, sans-serif' }}>Plateau</div>
 
-            {window.LOCATION_DATABASE.map((loc) => {
+            {locations.map((loc) => {
               const markerColor = window.MapService.getMarkerColor(loc.type);
               const borderColor = window.MapService.getMarkerBorderColor(loc.type);
               const isSelected = selectedLocation?.id === loc.id;
