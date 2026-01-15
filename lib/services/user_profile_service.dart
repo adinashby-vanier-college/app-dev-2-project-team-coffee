@@ -24,6 +24,7 @@ class UserProfileService {
         'name': user.displayName ?? '',
         'createdAt': FieldValue.serverTimestamp(),
         'friends': <String>[],
+        'savedLocations': <String>[], // Initialize saved locations array
       });
     }
   }
