@@ -11,11 +11,13 @@ class LocationTrackingProvider with ChangeNotifier {
   bool _isTrackingEnabled = false;
   bool _isLoadingLocation = false;
   String? _locationError;
+  bool _isInitialized = false;
 
   Map<String, dynamic>? get currentLocation => _currentLocation;
   bool get isTrackingEnabled => _isTrackingEnabled;
   bool get isLoadingLocation => _isLoadingLocation;
   String? get locationError => _locationError;
+  bool get isInitialized => _isInitialized;
 
   LocationTrackingProvider() {
     _loadPersistedState();
@@ -31,13 +33,39 @@ class LocationTrackingProvider with ChangeNotifier {
       
       // Load location data if it exists
       final locationJson = prefs.getString(_locationKey);
-      if (locationJson != null) {
-        _currentLocation = Map<String, dynamic>.from(json.decode(locationJson));
+      if (locationJson != null && locationJson.isNotEmpty) {
+        try {
+          final decoded = json.decode(locationJson);
+          if (decoded is Map) {
+            _currentLocation = Map<String, dynamic>.from(decoded);
+          }
+        } catch (e) {
+          debugPrint('Error decoding location JSON: $e');
+          // If location data is corrupted, clear it
+          _currentLocation = null;
+          // If toggle was enabled but location is corrupted, disable toggle
+          if (_isTrackingEnabled) {
+            _isTrackingEnabled = false;
+            await _saveTrackingState(false);
+          }
+        }
+      } else {
+        // If toggle is enabled but no location data exists, disable toggle
+        if (_isTrackingEnabled) {
+          _isTrackingEnabled = false;
+          await _saveTrackingState(false);
+        }
       }
       
+      _isInitialized = true;
       notifyListeners();
     } catch (e) {
       debugPrint('Error loading persisted location state: $e');
+      // On error, reset to safe state
+      _isTrackingEnabled = false;
+      _currentLocation = null;
+      _isInitialized = true;
+      notifyListeners();
     }
   }
 
@@ -71,8 +99,21 @@ class LocationTrackingProvider with ChangeNotifier {
     }
   }
 
+  /// Ensure state consistency - if toggle is enabled but location is missing, disable toggle
+  Future<void> _ensureStateConsistency() async {
+    if (_isTrackingEnabled && _currentLocation == null) {
+      debugPrint('State inconsistency detected: toggle enabled but no location. Disabling toggle.');
+      _isTrackingEnabled = false;
+      await _saveTrackingState(false);
+      notifyListeners();
+    }
+  }
+
   /// Toggle location tracking on/off
   Future<void> toggleLocationTracking() async {
+    // Ensure state is consistent before toggling
+    await _ensureStateConsistency();
+    
     if (_isTrackingEnabled) {
       // Turn off tracking
       await turnOffLocationTracking();

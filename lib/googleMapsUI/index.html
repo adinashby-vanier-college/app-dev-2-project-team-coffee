@@ -59,6 +59,8 @@
 // ============================================================================
 // Initialize locations queue for data that arrives before React is ready
 window._locationsQueue = window._locationsQueue || [];
+// Initialize friends queue for data that arrives before React is ready
+window._friendsQueue = window._friendsQueue || [];
     </script>
 
     <script type="text/javascript">
@@ -247,20 +249,12 @@ const App = () => {
   // Locations State (loaded from Firebase via Flutter)
   const [locations, setLocations] = useState([]);
 
+  // Friends State (loaded from Firebase via Flutter)
+  const [friendsList, setFriendsList] = useState([]);
+
   const mapRef = useRef(null);
   const currentDay = new Date().toLocaleDateString('en-US', { weekday: 'long' });
   const touchStartRef = useRef(null);
-
-  const friendsList = [
-    { id: 1, name: 'Sarah Chen', avatar: 'SC' },
-    { id: 2, name: 'Michael Torres', avatar: 'MT' },
-    { id: 3, name: 'Emma Johnson', avatar: 'EJ' },
-    { id: 4, name: 'David Kim', avatar: 'DK' },
-    { id: 5, name: 'Olivia Martinez', avatar: 'OM' },
-    { id: 6, name: 'James Wilson', avatar: 'JW' },
-    { id: 7, name: 'Sophie Brown', avatar: 'SB' },
-    { id: 8, name: 'Alex Rivera', avatar: 'AR' },
-  ];
 
   useEffect(() => {
     if (mapRef.current) {
@@ -362,11 +356,24 @@ const App = () => {
     window.loadLocationsFromFlutter = (locationsData) => {
       setLocations(locationsData || []);
     };
-    
+
     // Check if there's queued locations data from before React was ready
     if (window._locationsQueue && window._locationsQueue.length > 0) {
       const queuedLocations = window._locationsQueue.shift();
       setLocations(queuedLocations || []);
+    }
+
+    // Set up function to receive friends from Flutter
+    window.loadFriendsFromFlutter = (friendsData) => {
+      console.log('Received friends from Flutter:', friendsData?.length || 0);
+      setFriendsList(friendsData || []);
+    };
+
+    // Check if there's queued friends data from before React was ready
+    if (window._friendsQueue && window._friendsQueue.length > 0) {
+      const queuedFriends = window._friendsQueue.shift();
+      console.log('Loading queued friends:', queuedFriends?.length || 0);
+      setFriendsList(queuedFriends || []);
     }
   }, []);
 
@@ -497,6 +504,10 @@ const App = () => {
   const handleSendSceneClick = () => {
     setSelectedFriends(new Set());
     setIsSendSceneModalOpen(true);
+    // Request fresh friends list from Flutter
+    if (window.FlutterGetFriends) {
+      window.FlutterGetFriends.postMessage('refresh');
+    }
   };
 
   const handleFriendToggle = (friendId) => {
@@ -952,42 +963,48 @@ const App = () => {
                 <p style={{ fontSize: '14px', color: '#64748b', marginTop: '4px' }}>Select friends to share with</p>
               </div>
               <div style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {friendsList.map((friend) => {
-                  const isSelected = selectedFriends.has(friend.id);
-                  return (
-                    <button
-                      key={friend.id}
-                      onClick={() => handleFriendToggle(friend.id)}
-                      style={{
-                        width: '100%',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '12px',
-                        padding: '12px',
-                        borderRadius: '12px',
-                        border: isSelected ? '2px solid #2563eb' : '2px solid transparent',
-                        backgroundColor: isSelected ? '#eff6ff' : '#f8fafc',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      <div style={{
-                        width: '48px',
-                        height: '48px',
-                        borderRadius: '50%',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontWeight: '600',
-                        fontSize: '14px',
-                        flexShrink: 0,
-                        backgroundColor: isSelected ? '#2563eb' : '#cbd5e1',
-                        color: isSelected ? 'white' : '#475569'
-                      }}>
-                        {friend.avatar}
-                      </div>
-                      <div style={{ flex: 1, textAlign: 'left' }}>
-                        <div style={{ fontWeight: '500', color: '#1e293b' }}>{friend.name}</div>
-                      </div>
+                {friendsList.length === 0 ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '32px', textAlign: 'center' }}>
+                    <p style={{ color: '#64748b', fontSize: '14px' }}>No friends yet</p>
+                    <p style={{ color: '#94a3b8', fontSize: '12px', marginTop: '4px' }}>Add friends to share locations with them</p>
+                  </div>
+                ) : (
+                  friendsList.map((friend) => {
+                    const isSelected = selectedFriends.has(friend.id);
+                    return (
+                      <button
+                        key={friend.id}
+                        onClick={() => handleFriendToggle(friend.id)}
+                        style={{
+                          width: '100%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '12px',
+                          padding: '12px',
+                          borderRadius: '12px',
+                          border: isSelected ? '2px solid #2563eb' : '2px solid transparent',
+                          backgroundColor: isSelected ? '#eff6ff' : '#f8fafc',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <div style={{
+                          width: '48px',
+                          height: '48px',
+                          borderRadius: '50%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontWeight: '600',
+                          fontSize: '14px',
+                          flexShrink: 0,
+                          backgroundColor: isSelected ? '#2563eb' : '#cbd5e1',
+                          color: isSelected ? 'white' : '#475569'
+                        }}>
+                          {friend.avatar}
+                        </div>
+                        <div style={{ flex: 1, textAlign: 'left' }}>
+                          <div style={{ fontWeight: '500', color: '#1e293b' }}>{friend.name}</div>
+                        </div>
                       <div style={{
                         width: '24px',
                         height: '24px',
@@ -1007,7 +1024,8 @@ const App = () => {
                       </div>
                     </button>
                   );
-                })}
+                })
+                )}
               </div>
               <div style={{ padding: '16px', borderTop: '1px solid #f1f5f9', display: 'flex', gap: '12px' }}>
                 <button

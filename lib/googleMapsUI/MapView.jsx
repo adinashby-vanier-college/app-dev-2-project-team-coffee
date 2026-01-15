@@ -88,17 +88,8 @@ const App = () => {
   // Locations State (loaded from Firebase via Flutter)
   const [locations, setLocations] = useState([]);
   
-  // Mock friends list
-  const friendsList = [
-    { id: 1, name: 'Sarah Chen', avatar: 'SC' },
-    { id: 2, name: 'Michael Torres', avatar: 'MT' },
-    { id: 3, name: 'Emma Johnson', avatar: 'EJ' },
-    { id: 4, name: 'David Kim', avatar: 'DK' },
-    { id: 5, name: 'Olivia Martinez', avatar: 'OM' },
-    { id: 6, name: 'James Wilson', avatar: 'JW' },
-    { id: 7, name: 'Sophie Brown', avatar: 'SB' },
-    { id: 8, name: 'Alex Rivera', avatar: 'AR' },
-  ];
+  // Friends State (loaded from Firebase via Flutter)
+  const [friendsList, setFriendsList] = useState([]);
 
   const mapRef = useRef(null);
   const modalRef = useRef(null);
@@ -161,11 +152,24 @@ const App = () => {
     window.loadLocationsFromFlutter = (locationsData) => {
       setLocations(locationsData || []);
     };
-    
+
     // Check if there's queued locations data from before React was ready
     if (window._locationsQueue && window._locationsQueue.length > 0) {
       const queuedLocations = window._locationsQueue.shift();
       setLocations(queuedLocations || []);
+    }
+
+    // Set up function to receive friends from Flutter
+    window.loadFriendsFromFlutter = (friendsData) => {
+      console.log('Received friends from Flutter:', friendsData?.length || 0);
+      setFriendsList(friendsData || []);
+    };
+
+    // Check if there's queued friends data from before React was ready
+    if (window._friendsQueue && window._friendsQueue.length > 0) {
+      const queuedFriends = window._friendsQueue.shift();
+      console.log('Loading queued friends:', queuedFriends?.length || 0);
+      setFriendsList(queuedFriends || []);
     }
   }, []);
 
@@ -261,6 +265,10 @@ const App = () => {
   const handleSendSceneClick = () => {
     setSelectedFriends(new Set());
     setIsSendSceneModalOpen(true);
+    // Request fresh friends list from Flutter
+    if (window.FlutterGetFriends) {
+      window.FlutterGetFriends.postMessage('refresh');
+    }
   };
 
   const handleFriendToggle = (friendId) => {
@@ -742,47 +750,54 @@ const App = () => {
 
               {/* Friends List */}
               <div className="flex-1 overflow-y-auto p-4 space-y-2">
-                {friendsList.map((friend) => {
-                  const isSelected = selectedFriends.has(friend.id);
-                  return (
-                    <button
-                      key={friend.id}
-                      onClick={() => handleFriendToggle(friend.id)}
-                      className={`w-full flex items-center gap-3 p-3 rounded-xl transition-colors ${
-                        isSelected 
-                          ? 'bg-blue-50 border-2 border-blue-500' 
-                          : 'bg-slate-50 border-2 border-transparent hover:bg-slate-100'
-                      }`}
-                    >
-                      {/* Avatar */}
-                      <div className={`w-12 h-12 rounded-full flex items-center justify-center font-semibold text-sm flex-shrink-0 ${
-                        isSelected 
-                          ? 'bg-blue-500 text-white' 
-                          : 'bg-slate-300 text-slate-600'
-                      }`}>
-                        {friend.avatar}
-                      </div>
-                      
-                      {/* Name */}
-                      <div className="flex-1 text-left">
-                        <div className="font-medium text-slate-800">{friend.name}</div>
-                      </div>
-                      
-                      {/* Checkbox */}
-                      <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
-                        isSelected 
-                          ? 'bg-blue-500 border-blue-500' 
-                          : 'border-slate-300'
-                      }`}>
-                        {isSelected && (
-                          <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                          </svg>
-                        )}
-                      </div>
-                    </button>
-                  );
-                })}
+                {friendsList.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-8 text-center">
+                    <p className="text-slate-500 text-sm">No friends yet</p>
+                    <p className="text-slate-400 text-xs mt-1">Add friends to share locations with them</p>
+                  </div>
+                ) : (
+                  friendsList.map((friend) => {
+                    const isSelected = selectedFriends.has(friend.id);
+                    return (
+                      <button
+                        key={friend.id}
+                        onClick={() => handleFriendToggle(friend.id)}
+                        className={`w-full flex items-center gap-3 p-3 rounded-xl transition-colors ${
+                          isSelected 
+                            ? 'bg-blue-50 border-2 border-blue-500' 
+                            : 'bg-slate-50 border-2 border-transparent hover:bg-slate-100'
+                        }`}
+                      >
+                        {/* Avatar */}
+                        <div className={`w-12 h-12 rounded-full flex items-center justify-center font-semibold text-sm flex-shrink-0 ${
+                          isSelected 
+                            ? 'bg-blue-500 text-white' 
+                            : 'bg-slate-300 text-slate-600'
+                        }`}>
+                          {friend.avatar}
+                        </div>
+                        
+                        {/* Name */}
+                        <div className="flex-1 text-left">
+                          <div className="font-medium text-slate-800">{friend.name}</div>
+                        </div>
+                        
+                        {/* Checkbox */}
+                        <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                          isSelected 
+                            ? 'bg-blue-500 border-blue-500' 
+                            : 'border-slate-300'
+                        }`}>
+                          {isSelected && (
+                            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                            </svg>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })
+                )}
               </div>
 
               {/* Footer Buttons */}

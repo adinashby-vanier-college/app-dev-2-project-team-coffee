@@ -165,13 +165,27 @@ class _LocationDetailSheetState extends State<LocationDetailSheet> {
   }
 
   String _getFriendInitials(UserModel friend) {
-    final name = friend.name ?? friend.displayName ?? '';
-    if (name.isEmpty) return '?';
-    final parts = name.trim().split(' ');
+    // Prefer a human-friendly label:
+    // 1) explicit profile name
+    // 2) displayName
+    // 3) email local-part (before @)
+    // 4) uid as last resort
+    String label =
+        (friend.name != null && friend.name!.trim().isNotEmpty)
+            ? friend.name!.trim()
+            : (friend.displayName != null &&
+                    friend.displayName!.trim().isNotEmpty)
+                ? friend.displayName!.trim()
+                : (friend.email != null && friend.email!.trim().isNotEmpty)
+                    ? friend.email!.split('@').first
+                    : friend.uid;
+
+    if (label.isEmpty) return '?';
+    final parts = label.trim().split(' ');
     if (parts.length >= 2) {
       return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
     }
-    return name[0].toUpperCase();
+    return label[0].toUpperCase();
   }
 
   @override
@@ -631,9 +645,28 @@ class _LocationDetailSheetState extends State<LocationDetailSheet> {
                                           // Name
                                           Expanded(
                                             child: Text(
-                                              friend.name ??
-                                                  friend.displayName ??
-                                                  'Unknown',
+                                              (friend.name != null &&
+                                                          friend.name!
+                                                              .trim()
+                                                              .isNotEmpty)
+                                                  ? friend.name!.trim()
+                                                  : (friend.displayName !=
+                                                              null &&
+                                                          friend
+                                                              .displayName!
+                                                              .trim()
+                                                              .isNotEmpty)
+                                                      ? friend.displayName!
+                                                          .trim()
+                                                      : (friend.email !=
+                                                                  null &&
+                                                              friend.email!
+                                                                  .trim()
+                                                                  .isNotEmpty)
+                                                          ? friend.email!
+                                                              .split('@')
+                                                              .first
+                                                          : friend.uid,
                                               style: const TextStyle(
                                                 fontSize: 16,
                                                 fontWeight: FontWeight.w500,

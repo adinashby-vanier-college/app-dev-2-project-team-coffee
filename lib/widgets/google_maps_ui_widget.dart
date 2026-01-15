@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../providers/saved_locations_provider.dart';
 import '../services/saved_locations_service.dart';
 import '../services/locations_service.dart';
+import '../services/friends_service.dart';
 import '../utils/locations_initializer.dart';
 
 class GoogleMapsUIWidget extends StatefulWidget {
@@ -21,6 +22,7 @@ class _GoogleMapsUIWidgetState extends State<GoogleMapsUIWidget> {
   String? _initialUrl;
   final SavedLocationsService _savedLocationsService = SavedLocationsService();
   final LocationsService _locationsService = LocationsService();
+  final FriendsService _friendsService = FriendsService();
 
   @override
   void initState() {
@@ -63,6 +65,13 @@ class _GoogleMapsUIWidgetState extends State<GoogleMapsUIWidget> {
           _sendSavedLocationsToWebView();
         },
       )
+      ..addJavaScriptChannel(
+        'FlutterGetFriends',
+        onMessageReceived: (JavaScriptMessage message) async {
+          // Refresh friends when requested
+          await _loadFriendsFromFirebase();
+        },
+      )
       ..setNavigationDelegate(
         NavigationDelegate(
           onProgress: (int progress) {
@@ -79,6 +88,8 @@ class _GoogleMapsUIWidgetState extends State<GoogleMapsUIWidget> {
             await _loadOSMFile();
             // Load locations from Firebase and inject into WebView
             await _loadLocationsFromFirebase();
+            // Load friends from Firebase and inject into WebView
+            await _loadFriendsFromFirebase();
             // Load saved locations from Firebase (will be sent via provider listener)
             _sendSavedLocationsToWebView();
           },
@@ -192,6 +203,95 @@ class _GoogleMapsUIWidgetState extends State<GoogleMapsUIWidget> {
       ''');
     } catch (e) {
       debugPrint('Error loading locations from Firebase: $e');
+    }
+  }
+
+  Future<void> _loadFriendsFromFirebase() async {
+    try {
+      // Get friends list from Firebase
+      final friendUids = await _friendsService.getFriendsList().first;
+
+      if (friendUids.isEmpty) {
+        debugPrint('No friends found');
+        // Send empty array to webview
+        await _controller.runJavaScript('''
+          if (window.loadFriendsFromFlutter) {
+            window.loadFriendsFromFlutter([]);
+          } else {
+            window._friendsQueue = window._friendsQueue || [];
+            window._friendsQueue.push([]);
+          }
+        ''');
+        return;
+      }
+      
+      // Get friend profiles
+      final friends = await _friendsService.getFriendProfiles(friendUids);
+
+      // Convert friends to a format suitable for JavaScript
+      final friendsList = friends.map((friend) {
+        // Choose a display label:
+        // 1) explicit profile name
+        // 2) displayName
+        // 3) email local-part (before @)
+        // 4) uid as last resort
+        String label =
+            (friend.name != null && friend.name!.trim().isNotEmpty)
+                ? friend.name!.trim()
+                : (friend.displayName != null &&
+                        friend.displayName!.trim().isNotEmpty)
+                    ? friend.displayName!.trim()
+                    : (friend.email != null &&
+                            friend.email!.trim().isNotEmpty)
+                        ? friend.email!.split('@').first
+                        : friend.uid;
+
+        // Derive initials from the label
+        String initials = '?';
+        if (label.isNotEmpty) {
+          final parts = label.trim().split(' ');
+          if (parts.length >= 2) {
+            initials = '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+          } else {
+            initials = label[0].toUpperCase();
+          }
+        }
+
+        return {
+          'id': friend.uid,
+          'name': label,
+          'avatar': initials,
+          'photoURL': friend.photoURL ?? '',
+        };
+      }).toList();
+
+      // Convert to JSON and inject into WebView
+      final friendsJson = jsonEncode(friendsList);
+
+      debugPrint('Sending ${friendsList.length} friends to webview');
+      await _controller.runJavaScript('''
+        if (window.loadFriendsFromFlutter) {
+          try {
+            const friendsData = $friendsJson;
+            console.log('Loading friends from Flutter:', friendsData.length);
+            window.loadFriendsFromFlutter(friendsData);
+          } catch (e) {
+            console.error('Error loading friends from Flutter:', e);
+          }
+        } else {
+          // Store friends in a queue if the function isn't ready yet
+          window._friendsQueue = window._friendsQueue || [];
+          window._friendsQueue.push($friendsJson);
+        }
+      ''');
+    } catch (e) {
+      debugPrint('Error loading friends from Firebase: $e');
+      // Send empty array on error
+      await _controller.runJavaScript('''
+        if (window.loadFriendsFromFlutter) {
+          window.loadFriendsFromFlutter([]);
+        }
+      ''');
     }
   }
 
