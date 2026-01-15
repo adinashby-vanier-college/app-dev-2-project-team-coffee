@@ -86,7 +86,13 @@ class _ConversationDetailPageState extends State<ConversationDetailPage> {
                   : null,
             ),
             const SizedBox(width: 12),
-            Text(displayName),
+            Expanded(
+              child: Text(
+                displayName,
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+              ),
+            ),
           ],
         ),
       ),

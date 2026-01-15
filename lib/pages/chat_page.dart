@@ -181,7 +181,11 @@ class _ChatPageState extends State<ChatPage> {
                           ? Text(displayName.isNotEmpty ? displayName[0].toUpperCase() : '?')
                           : null,
                     ),
-                    title: Text(displayName),
+                    title: Text(
+                      displayName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                     subtitle: conversation.lastMessage != null
                         ? Text(
                             conversation.lastMessage!,
