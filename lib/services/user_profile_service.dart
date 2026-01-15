@@ -141,6 +141,17 @@ class UserProfileService {
       'photoURL': photoURL,
     });
   }
+
+  /// Updates the user's location in Firestore
+  Future<void> updateUserLocation(Map<String, dynamic> location) async {
+    final user = _auth.currentUser;
+    if (user == null) return; // Fail silently if not logged in
+
+    await _firestore.collection('users').doc(user.uid).update({
+      'location': location,
+      'lastLocationUpdate': FieldValue.serverTimestamp(),
+    });
+  }
 }
 
 

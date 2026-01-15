@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 
 import '../models/location_details.dart';
 import '../providers/saved_locations_provider.dart';
+import '../pages/moment_form_page.dart';
 import 'send_scene_sheet.dart';
 
 class LocationDetailSheet extends StatefulWidget {
@@ -131,6 +132,53 @@ class _LocationDetailSheetState extends State<LocationDetailSheet> {
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
                 color: Color(0xFF475569),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCreateMomentButton() {
+    return InkWell(
+      onTap: () {
+        Navigator.of(context).pop(); // Close the detail sheet
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => MomentFormPage(
+              locationId: widget.location.id,
+              locationName: widget.location.name,
+              locationAddress: widget.location.address,
+            ),
+          ),
+        );
+      },
+      borderRadius: BorderRadius.circular(999),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFEEF2FF),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: const Color(0xFF6366F1), width: 2),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: const [
+            Icon(
+              Icons.event,
+              size: 20,
+              color: Color(0xFF6366F1),
+            ),
+            SizedBox(height: 4),
+            Text(
+              'Moment',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF6366F1),
               ),
             ),
           ],
@@ -293,8 +341,10 @@ class _LocationDetailSheetState extends State<LocationDetailSheet> {
                         Row(
                           children: [
                             Expanded(child: _buildSaveButton(loc)),
-                            const SizedBox(width: 16),
+                            const SizedBox(width: 12),
                             Expanded(child: _buildSendSceneButton()),
+                            const SizedBox(width: 12),
+                            Expanded(child: _buildCreateMomentButton()),
                           ],
                         ),
                         const SizedBox(height: 24),

@@ -7,6 +7,7 @@ class UserModel {
   final String? photoURL;
   final String? name;
   final DateTime? createdAt;
+  final Map<String, dynamic>? location;
 
   UserModel({
     required this.uid,
@@ -15,6 +16,7 @@ class UserModel {
     this.photoURL,
     this.name,
     this.createdAt,
+    this.location,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -27,6 +29,7 @@ class UserModel {
       createdAt: json['createdAt'] != null
           ? (json['createdAt'] as Timestamp).toDate()
           : null,
+      location: json['location'] as Map<String, dynamic>?,
     );
   }
 
@@ -40,6 +43,7 @@ class UserModel {
       createdAt: data['createdAt'] != null
           ? (data['createdAt'] as Timestamp).toDate()
           : null,
+      location: data['location'] as Map<String, dynamic>?,
     );
   }
 

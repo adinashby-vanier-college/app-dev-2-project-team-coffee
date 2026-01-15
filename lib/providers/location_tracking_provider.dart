@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import '../services/location_awareness_service.dart';
+import '../services/user_profile_service.dart';
 
 class LocationTrackingProvider with ChangeNotifier {
   static const String _locationKey = 'current_location';
   static const String _isTrackingKey = 'is_location_tracking_enabled';
+  final UserProfileService _userProfileService = UserProfileService();
 
   Map<String, dynamic>? _currentLocation;
   bool _isTrackingEnabled = false;
@@ -142,6 +144,7 @@ class LocationTrackingProvider with ChangeNotifier {
       // Persist the location and tracking state
       await _saveLocation(locationData);
       await _saveTrackingState(true);
+      await _userProfileService.updateUserLocation(locationData);
       
       notifyListeners();
     } catch (e) {
@@ -187,6 +190,7 @@ class LocationTrackingProvider with ChangeNotifier {
       
       // Update persisted location
       await _saveLocation(locationData);
+      await _userProfileService.updateUserLocation(locationData);
       
       notifyListeners();
     } catch (e) {

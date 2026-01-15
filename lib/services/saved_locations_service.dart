@@ -53,9 +53,14 @@ class SavedLocationsService {
       return Stream.value([]);
     }
 
+    return getSavedLocationsStreamForUser(user.uid);
+  }
+
+  /// Stream of saved location IDs for a specific user
+  Stream<List<String>> getSavedLocationsStreamForUser(String uid) {
     return _firestore
         .collection('users')
-        .doc(user.uid)
+        .doc(uid)
         .snapshots()
         .map((snapshot) {
       if (!snapshot.exists) {

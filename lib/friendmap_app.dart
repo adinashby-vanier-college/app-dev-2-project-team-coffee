@@ -8,6 +8,8 @@ import 'pages/home_page.dart';
 import 'pages/phone_entry_screen.dart';
 import 'pages/profile_page.dart';
 import 'pages/sms_code_screen.dart';
+import 'pages/moments_page.dart';
+import 'pages/notifications_page.dart';
 import 'providers/auth_provider.dart';
 import 'providers/phone_auth_provider.dart';
 import 'providers/saved_locations_provider.dart';
@@ -64,8 +66,11 @@ class _FriendmapAppState extends State<FriendmapApp> {
           '/phone-entry': (context) => const PhoneEntryScreen(),
           '/profile': (context) => const ProfilePage(),
           '/sms-code': (context) => const SmsCodeScreen(),
+          '/moments': (context) => const MomentsPage(),
+          '/notifications': (context) => const NotificationsPage(),
         },
       ),
     );
   }
 }
+

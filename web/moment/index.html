@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FriendMap - Moment RSVP</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .container {
+      background: white;
+      border-radius: 24px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+      max-width: 480px;
+      width: 100%;
+      overflow: hidden;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 32px 24px;
+      text-align: center;
+    }
+
+    .header h1 {
+      font-size: 28px;
+      margin-bottom: 8px;
+    }
+
+    .header p {
+      opacity: 0.9;
+      font-size: 14px;
+    }
+
+    .content {
+      padding: 24px;
+    }
+
+    .event-card {
+      background: #f8fafc;
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 24px;
+    }
+
+    .event-title {
+      font-size: 22px;
+      font-weight: 700;
+      color: #1e293b;
+      margin-bottom: 16px;
+    }
+
+    .event-detail {
+      display: flex;
+      align-items: flex-start;
+      margin-bottom: 12px;
+    }
+
+    .event-detail svg {
+      width: 20px;
+      height: 20px;
+      margin-right: 12px;
+      color: #6366f1;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .event-detail-text {
+      color: #475569;
+      font-size: 15px;
+      line-height: 1.4;
+    }
+
+    .event-detail-label {
+      font-weight: 600;
+      color: #1e293b;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-group label {
+      display: block;
+      font-weight: 600;
+      color: #374151;
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+
+    .form-group input,
+    .form-group textarea {
+      width: 100%;
+      padding: 14px 16px;
+      border: 2px solid #e5e7eb;
+      border-radius: 12px;
+      font-size: 16px;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .form-group input:focus,
+    .form-group textarea:focus {
+      outline: none;
+      border-color: #6366f1;
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    }
+
+    .form-group textarea {
+      resize: vertical;
+      min-height: 80px;
+    }
+
+    .response-options {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .response-option {
+      position: relative;
+    }
+
+    .response-option input {
+      position: absolute;
+      opacity: 0;
+      cursor: pointer;
+    }
+
+    .response-option label {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 16px 8px;
+      border: 2px solid #e5e7eb;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: center;
+    }
+
+    .response-option label:hover {
+      border-color: #c7d2fe;
+      background: #f5f3ff;
+    }
+
+    .response-option input:checked+label {
+      border-color: #6366f1;
+      background: #eef2ff;
+    }
+
+    .response-option label svg {
+      width: 28px;
+      height: 28px;
+      margin-bottom: 8px;
+    }
+
+    .response-option label span {
+      font-weight: 600;
+      font-size: 13px;
+      color: #374151;
+    }
+
+    .response-going label svg {
+      color: #22c55e;
+    }
+
+    .response-maybe label svg {
+      color: #f59e0b;
+    }
+
+    .response-not-going label svg {
+      color: #ef4444;
+    }
+
+    .submit-btn {
+      width: 100%;
+      padding: 16px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .submit-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px -5px rgba(102, 126, 234, 0.4);
+    }
+
+    .submit-btn:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .success-message {
+      display: none;
+      text-align: center;
+      padding: 40px 24px;
+    }
+
+    .success-message.show {
+      display: block;
+    }
+
+    .success-message svg {
+      width: 64px;
+      height: 64px;
+      color: #22c55e;
+      margin-bottom: 16px;
+    }
+
+    .success-message h2 {
+      color: #1e293b;
+      margin-bottom: 8px;
+    }
+
+    .success-message p {
+      color: #64748b;
+    }
+
+    .error-message {
+      background: #fef2f2;
+      color: #dc2626;
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      display: none;
+    }
+
+    .error-message.show {
+      display: block;
+    }
+
+    .loading {
+      display: none;
+      text-align: center;
+      padding: 40px;
+    }
+
+    .loading.show {
+      display: block;
+    }
+
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid #e5e7eb;
+      border-top-color: #6366f1;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 16px;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .not-found {
+      text-align: center;
+      padding: 40px 24px;
+    }
+
+    .not-found svg {
+      width: 64px;
+      height: 64px;
+      color: #9ca3af;
+      margin-bottom: 16px;
+    }
+
+    .not-found h2 {
+      color: #374151;
+      margin-bottom: 8px;
+    }
+
+    .not-found p {
+      color: #6b7280;
+    }
+
+    .form-content {
+      display: block;
+    }
+
+    .form-content.hidden {
+      display: none;
+    }
+
+    .download-app {
+      text-align: center;
+      margin-top: 24px;
+      padding-top: 24px;
+      border-top: 1px solid #e5e7eb;
+    }
+
+    .download-app p {
+      color: #64748b;
+      font-size: 14px;
+      margin-bottom: 12px;
+    }
+
+    .download-app a {
+      color: #6366f1;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .download-app a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🗺️ FriendMap</h1>
+      <p>You've been invited to a Moment!</p>
+    </div>
+
+    <div class="loading" id="loading">
+      <div class="spinner"></div>
+      <p>Loading event details...</p>
+    </div>
+
+    <div class="not-found" id="notFound" style="display: none;">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+          d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+      <h2>Moment Not Found</h2>
+      <p>This link may have expired or the event has been cancelled.</p>
+    </div>
+
+    <div class="content form-content" id="formContent" style="display: none;">
+      <div class="event-card" id="eventCard">
+        <div class="event-title" id="eventTitle">Loading...</div>
+
+        <div class="event-detail">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+          <div class="event-detail-text">
+            <span class="event-detail-label">When:</span><br>
+            <span id="eventDate">Loading...</span>
+          </div>
+        </div>
+
+        <div class="event-detail">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+          <div class="event-detail-text">
+            <span class="event-detail-label">Where:</span><br>
+            <span id="eventLocation">Loading...</span><br>
+            <span id="eventAddress" style="color: #94a3b8; font-size: 13px;"></span>
+          </div>
+        </div>
+
+        <div class="event-detail" id="eventDescContainer" style="display: none;">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7" />
+          </svg>
+          <div class="event-detail-text">
+            <span class="event-detail-label">Details:</span><br>
+            <span id="eventDescription"></span>
+          </div>
+        </div>
+      </div>
+
+      <form id="rsvpForm">
+        <div class="error-message" id="errorMessage"></div>
+
+        <div class="form-group">
+          <label for="name">Your Name *</label>
+          <input type="text" id="name" name="name" placeholder="Enter your name" required>
+        </div>
+
+        <div class="form-group">
+          <label for="email">Email (optional)</label>
+          <input type="email" id="email" name="email" placeholder="your@email.com">
+        </div>
+
+        <div class="form-group">
+          <label>Are you going?</label>
+          <div class="response-options">
+            <div class="response-option response-going">
+              <input type="radio" name="response" id="going" value="going" required>
+              <label for="going">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>Going</span>
+              </label>
+            </div>
+            <div class="response-option response-maybe">
+              <input type="radio" name="response" id="maybe" value="maybe">
+              <label for="maybe">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>Maybe</span>
+              </label>
+            </div>
+            <div class="response-option response-not-going">
+              <input type="radio" name="response" id="notGoing" value="not_going">
+              <label for="notGoing">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>Can't Go</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="note">Add a note (optional)</label>
+          <textarea id="note" name="note" placeholder="Any message for the host..."></textarea>
+        </div>
+
+        <button type="submit" class="submit-btn" id="submitBtn">Send RSVP</button>
+      </form>
+
+      <div class="download-app">
+        <p>Want to create your own moments?</p>
+        <a href="#">Download FriendMap App</a>
+      </div>
+    </div>
+
+    <div class="success-message" id="successMessage">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+          d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+      <h2>RSVP Sent!</h2>
+      <p>Your response has been recorded. The host will see your RSVP.</p>
+
+      <div class="download-app" style="margin-top: 32px; border-top: none; padding-top: 0;">
+        <p>Want to plan moments with your friends?</p>
+        <a href="#">Download FriendMap App</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase SDK -->
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+    import { getFirestore, collection, query, where, getDocs, doc, updateDoc, arrayUnion, Timestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+    // Firebase configuration for friendmap-5b654
+    const firebaseConfig = {
+      apiKey: "AIzaSyADTYq40jhptvV0CUKU48HZW6VeHa22R0Y",
+      authDomain: "friendmap-5b654.firebaseapp.com",
+      projectId: "friendmap-5b654",
+      storageBucket: "friendmap-5b654.firebasestorage.app",
+      messagingSenderId: "680993210456",
+      appId: "1:680993210456:web:72bd95bba0038fff6a0a2d"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    // Get share code from URL
+    const pathParts = window.location.pathname.split('/');
+    const shareCode = pathParts[pathParts.length - 1] || pathParts[pathParts.length - 2];
+
+    let momentId = null;
+    let momentData = null;
+
+    // DOM Elements
+    const loading = document.getElementById('loading');
+    const notFound = document.getElementById('notFound');
+    const formContent = document.getElementById('formContent');
+    const successMessage = document.getElementById('successMessage');
+    const errorMessage = document.getElementById('errorMessage');
+    const rsvpForm = document.getElementById('rsvpForm');
+    const submitBtn = document.getElementById('submitBtn');
+
+    // Format date
+    function formatDate(timestamp) {
+      if (!timestamp) return 'Date TBD';
+      const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+      const options = {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit'
+      };
+      return date.toLocaleDateString('en-US', options);
+    }
+
+    // Load moment data
+    async function loadMoment() {
+      if (!shareCode || shareCode === 'moment') {
+        showNotFound();
+        return;
+      }
+
+      try {
+        const momentsRef = collection(db, 'moments');
+        const q = query(momentsRef, where('shareCode', '==', shareCode));
+        const snapshot = await getDocs(q);
+
+        if (snapshot.empty) {
+          showNotFound();
+          return;
+        }
+
+        const docSnap = snapshot.docs[0];
+        momentId = docSnap.id;
+        momentData = docSnap.data();
+
+        // Populate event details
+        document.getElementById('eventTitle').textContent = momentData.title || 'Untitled Event';
+        document.getElementById('eventDate').textContent = formatDate(momentData.dateTime);
+        document.getElementById('eventLocation').textContent = momentData.locationName || 'Location TBD';
+        document.getElementById('eventAddress').textContent = momentData.locationAddress || '';
+
+        if (momentData.description) {
+          document.getElementById('eventDescription').textContent = momentData.description;
+          document.getElementById('eventDescContainer').style.display = 'flex';
+        }
+
+        showForm();
+      } catch (error) {
+        console.error('Error loading moment:', error);
+        showNotFound();
+      }
+    }
+
+    function showLoading() {
+      loading.style.display = 'block';
+      notFound.style.display = 'none';
+      formContent.style.display = 'none';
+      successMessage.style.display = 'none';
+    }
+
+    function showNotFound() {
+      loading.style.display = 'none';
+      notFound.style.display = 'block';
+      formContent.style.display = 'none';
+      successMessage.style.display = 'none';
+    }
+
+    function showForm() {
+      loading.style.display = 'none';
+      notFound.style.display = 'none';
+      formContent.style.display = 'block';
+      successMessage.style.display = 'none';
+    }
+
+    function showSuccess() {
+      loading.style.display = 'none';
+      notFound.style.display = 'none';
+      formContent.style.display = 'none';
+      successMessage.style.display = 'block';
+    }
+
+    function showError(message) {
+      errorMessage.textContent = message;
+      errorMessage.style.display = 'block';
+    }
+
+    function hideError() {
+      errorMessage.style.display = 'none';
+    }
+
+    // Handle form submission
+    rsvpForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      hideError();
+
+      const name = document.getElementById('name').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const response = document.querySelector('input[name="response"]:checked')?.value;
+      const note = document.getElementById('note').value.trim();
+
+      if (!name) {
+        showError('Please enter your name');
+        return;
+      }
+
+      if (!response) {
+        showError('Please select your response');
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Sending...';
+
+      try {
+        const guestResponse = {
+          name: name,
+          response: response,
+          email: email || null,
+          note: note || null,
+          respondedAt: Timestamp.now()
+        };
+
+        const momentRef = doc(db, 'moments', momentId);
+        await updateDoc(momentRef, {
+          guestResponses: arrayUnion(guestResponse)
+        });
+
+        showSuccess();
+      } catch (error) {
+        console.error('Error submitting RSVP:', error);
+        showError('Failed to submit RSVP. Please try again.');
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Send RSVP';
+      }
+    });
+
+    // Initialize
+    showLoading();
+    loadMoment();
+  </script>
+</body>
+
+</html>

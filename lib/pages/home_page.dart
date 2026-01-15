@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../widgets/nav_bar.dart';
 import '../widgets/google_maps_ui_widget.dart';
 import '../widgets/user_menu_widget.dart';
+import '../widgets/notification_bell.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -17,6 +18,9 @@ class HomePage extends StatelessWidget {
         Navigator.pushReplacementNamed(context, '/friends');
         break;
       case 2:
+        Navigator.pushReplacementNamed(context, '/moments');
+        break;
+      case 3:
         Navigator.pushReplacementNamed(context, '/friend');
         break;
     }
@@ -27,6 +31,8 @@ class HomePage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         actions: const [
+          NotificationBell(),
+          SizedBox(width: 8),
           Padding(
             padding: EdgeInsets.only(right: 8.0),
             child: UserMenuWidget(),

@@ -31,6 +31,10 @@ class NavBar extends StatelessWidget {
           label: 'Friends',
         ),
         BottomNavigationBarItem(
+          icon: Icon(Icons.event),
+          label: 'Moments',
+        ),
+        BottomNavigationBarItem(
           icon: Icon(Icons.chat),
           label: 'Chat',
         ),
@@ -38,4 +42,3 @@ class NavBar extends StatelessWidget {
     );
   }
 }
-

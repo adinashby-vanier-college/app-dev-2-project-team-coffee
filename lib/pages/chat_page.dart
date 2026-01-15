@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../widgets/nav_bar.dart';
 import '../widgets/user_menu_widget.dart';
+import '../widgets/notification_bell.dart';
 import '../providers/auth_provider.dart';
 import '../services/chat_service.dart';
 import '../services/friends_service.dart';
@@ -32,6 +33,9 @@ class _ChatPageState extends State<ChatPage> {
         Navigator.pushReplacementNamed(context, '/friends');
         break;
       case 2:
+        Navigator.pushReplacementNamed(context, '/moments');
+        break;
+      case 3:
         break;
     }
   }
@@ -79,20 +83,28 @@ class _ChatPageState extends State<ChatPage> {
           child: Text('Please sign in to view chats'),
         ),
         bottomNavigationBar: NavBar(
-          currentIndex: 2,
+          currentIndex: 3,
           onTap: (index) => _onNavBarTap(context, index),
         ),
       );
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        actions: const [
-          Padding(
-            padding: EdgeInsets.only(right: 8.0),
-            child: UserMenuWidget(),
-          ),
-        ],
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) {
+        if (didPop) return;
+        Navigator.pushReplacementNamed(context, '/home');
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          actions: const [
+            NotificationBell(),
+            SizedBox(width: 8),
+            Padding(
+              padding: EdgeInsets.only(right: 8.0),
+              child: UserMenuWidget(),
+            ),
+          ],
         title: Padding(
           padding: const EdgeInsets.only(top: 8.0),
           child: Image.asset(
@@ -218,9 +230,10 @@ class _ChatPageState extends State<ChatPage> {
         },
       ),
       bottomNavigationBar: NavBar(
-        currentIndex: 2,
+        currentIndex: 3,
         onTap: (index) => _onNavBarTap(context, index),
       ),
+    ),
     );
   }
 }

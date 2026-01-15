@@ -11,6 +11,7 @@ import '../utils/locations_initializer.dart';
 import '../services/friends_service.dart';
 import '../services/chat_service.dart';
 import '../models/user_model.dart';
+import '../services/debug_service.dart';
 
 class GoogleMapsUIWidget extends StatefulWidget {
   const GoogleMapsUIWidget({super.key});
@@ -29,6 +30,8 @@ class _GoogleMapsUIWidgetState extends State<GoogleMapsUIWidget> {
   @override
   void initState() {
     super.initState();
+    // Seed debug data for friends map
+    DebugService().seedFriendLocations();
     _initializeWebView();
   }
 
@@ -219,6 +222,7 @@ class _GoogleMapsUIWidgetState extends State<GoogleMapsUIWidget> {
           'photoURL': friend.photoURL ?? '',
           'email': friend.email ?? '',
           'avatar': getInitials(friend),
+          'location': friend.location,
         }).toList(),
       );
       

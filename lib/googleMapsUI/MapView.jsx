@@ -153,6 +153,18 @@ const App = () => {
 
   }, []);
 
+  // --- FRIENDS STATE ---
+  const [friends, setFriends] = useState([]);
+
+  useEffect(() => {
+    window.loadFriendsFromFlutter = (friendsData) => {
+      setFriends(friendsData || []);
+    };
+    if (window._friendsQueue && window._friendsQueue.length > 0) {
+      setFriends(window._friendsQueue.shift() || []);
+    }
+  }, []);
+
   // --- SEARCH LOGIC ---
   useEffect(() => {
     const results = window.MapService.searchLocations(locations, searchQuery);
@@ -438,6 +450,61 @@ const App = () => {
                     >
                       {loc.name}
                     </div>
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* -- FRIEND MARKERS -- */}
+            {friends.map((friend) => {
+              if (!friend.location || (!friend.location.x && !friend.location.latitude)) return null;
+
+              // Fallback: If x/y exist use them, else simple mock projection or ignore
+              // For this task, we assume x/y are present or we mock them
+              const x = friend.location.x || (friend.location.latitude ? (3000 - (friend.location.latitude * 30)) % 3000 : 1500);
+              const y = friend.location.y || (friend.location.longitude ? (3000 - (friend.location.longitude * 30)) % 3000 : 1500);
+
+              // Calculate dynamic sizes
+              const inverseScale = 1 / viewState.scale;
+              const avatarSize = 40 * inverseScale;
+              const borderSize = 3 * inverseScale;
+
+              return (
+                <div
+                  key={`friend-${friend.id}`}
+                  className="absolute transform -translate-x-1/2 -translate-y-1/2 z-20 cursor-pointer hover:z-50"
+                  style={{ left: x, top: y }}
+                  title={friend.name}
+                >
+                  <div
+                    className="rounded-full overflow-hidden border-white shadow-lg relative bg-white"
+                    style={{
+                      width: `${avatarSize}px`,
+                      height: `${avatarSize}px`,
+                      borderWidth: `${borderSize}px`,
+                      borderStyle: 'solid',
+                      borderColor: '#2563eb' // Blue-600
+                    }}
+                  >
+                    {friend.photoURL ? (
+                      <img src={friend.photoURL} alt={friend.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-slate-200 text-slate-500 font-bold" style={{ fontSize: `${avatarSize * 0.4}px` }}>
+                        {friend.avatar}
+                      </div>
+                    )}
+                  </div>
+                  {/* Name Label */}
+                  <div
+                    className="absolute top-full left-1/2 transform -translate-x-1/2 mt-1 bg-white/90 backdrop-blur-sm px-2 py-0.5 rounded text-xs font-bold shadow-sm whitespace-nowrap text-slate-800 pointer-events-none"
+                    style={{
+                      fontSize: `${12 * inverseScale}px`,
+                      marginTop: `${4 * inverseScale}px`,
+                      borderRadius: `${4 * inverseScale}px`,
+                      padding: `${2 * inverseScale}px ${6 * inverseScale}px`
+                    }}
+                  >
+                    {friend.name}
                   </div>
                 </div>
               );

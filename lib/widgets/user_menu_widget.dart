@@ -4,9 +4,11 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../providers/auth_provider.dart';
 import '../models/user_model.dart';
 import '../services/user_profile_service.dart';
+import '../services/notification_service.dart';
 import '../pages/landing_page.dart';
 import '../pages/profile_page.dart';
 import '../pages/settings_page.dart';
+import '../pages/notifications_page.dart';
 
 
 class _ProfileMenuItem extends StatefulWidget {
@@ -55,6 +57,91 @@ class _ProfileMenuItemState extends State<_ProfileMenuItem> {
               const SizedBox(width: 8),
               Text(
                 'Profile',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: _isHovered ? Colors.blue.shade600 : Colors.black87,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _NotificationsMenuItem extends StatefulWidget {
+  final VoidCallback onTap;
+  final int unreadCount;
+
+  const _NotificationsMenuItem({required this.onTap, this.unreadCount = 0});
+
+  @override
+  State<_NotificationsMenuItem> createState() => _NotificationsMenuItemState();
+}
+
+class _NotificationsMenuItemState extends State<_NotificationsMenuItem> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: InkWell(
+        onTap: widget.onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 10,
+          ),
+          color: _isHovered ? Colors.blue.shade50 : Colors.transparent,
+          child: Row(
+            children: [
+              Stack(
+                children: [
+                  Container(
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      color: _isHovered
+                          ? Colors.blue.shade100.withOpacity(0.5)
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(
+                      Icons.notifications,
+                      size: 15,
+                      color: _isHovered ? Colors.blue.shade500 : Colors.grey.shade400,
+                    ),
+                  ),
+                  if (widget.unreadCount > 0)
+                    Positioned(
+                      right: 0,
+                      top: 0,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Text(
+                          widget.unreadCount > 9 ? '9+' : '${widget.unreadCount}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 8,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Notifications',
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
@@ -244,6 +331,13 @@ class _UserMenuWidgetState extends State<UserMenuWidget> {
     _closeMenu();
     Navigator.of(context).push(
       MaterialPageRoute(builder: (context) => const SettingsPage()),
+    );
+  }
+
+  void _handleNotifications() {
+    _closeMenu();
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (context) => const NotificationsPage()),
     );
   }
 
