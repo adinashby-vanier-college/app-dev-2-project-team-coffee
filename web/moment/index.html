@@ -475,16 +475,7 @@
   <script type="module">
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
     import { getFirestore, collection, query, where, getDocs, doc, updateDoc, arrayUnion, Timestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-
-    // Firebase configuration for friendmap-5b654
-    const firebaseConfig = {
-      apiKey: "AIzaSyADTYq40jhptvV0CUKU48HZW6VeHa22R0Y",
-      authDomain: "friendmap-5b654.firebaseapp.com",
-      projectId: "friendmap-5b654",
-      storageBucket: "friendmap-5b654.firebasestorage.app",
-      messagingSenderId: "680993210456",
-      appId: "1:680993210456:web:72bd95bba0038fff6a0a2d"
-    };
+    import { firebaseConfig } from './config.js';
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);

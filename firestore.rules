@@ -35,6 +35,22 @@ service cloud.firestore {
       
       // Users cannot delete their own document
       allow delete: if false;
+      
+      // Notifications subcollection
+      match /notifications/{notificationId} {
+        // Users can read their own notifications
+        allow read: if isOwner(userId);
+        
+        // Users can create notifications for themselves (system-generated)
+        allow create: if isOwner(userId);
+        
+        // Users can update their own notifications (mark as read)
+        allow update: if isOwner(userId) &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']);
+        
+        // Users can delete their own notifications
+        allow delete: if isOwner(userId);
+      }
     }
     
     // Friend requests collection
@@ -106,6 +122,42 @@ service cloud.firestore {
           (resource.data.senderId == request.auth.uid || 
            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read', 'readAt']));
       }
+    }
+    
+    // Moments collection
+    match /moments/{momentId} {
+      // Allow reading moments if:
+      // 1. User is authenticated and created the moment
+      // 2. User is authenticated and is invited
+      // 3. Moment has a shareCode (for web form access - allows unauthenticated reads)
+      allow read: if (isAuthenticated() && 
+        (resource.data.createdBy == request.auth.uid ||
+         request.auth.uid in resource.data.invitedFriends)) ||
+        resource.data.shareCode != null;
+      
+      // Authenticated users can create moments (must be the creator)
+      allow create: if isAuthenticated() && 
+        request.resource.data.createdBy == request.auth.uid;
+      
+      // Users can update moments they created (full update)
+      allow update: if isAuthenticated() && 
+        resource.data.createdBy == request.auth.uid;
+      
+      // Authenticated users can update their own response or invite friends
+      allow update: if isAuthenticated() && 
+        (resource.data.createdBy == request.auth.uid ||
+         request.auth.uid in resource.data.invitedFriends) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasAny(['responses', 'invitedFriends', 'shareCode']);
+      
+      // Allow updating guestResponses for moments with shareCode (for web form RSVP)
+      // This allows unauthenticated users to submit RSVPs via the web form
+      allow update: if resource.data.shareCode != null &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['guestResponses']) &&
+        request.resource.data.guestResponses is list;
+      
+      // Only the creator can delete moments
+      allow delete: if isAuthenticated() && 
+        resource.data.createdBy == request.auth.uid;
     }
   }
 }
