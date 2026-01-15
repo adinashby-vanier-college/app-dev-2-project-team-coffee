@@ -6,6 +6,7 @@ import '../services/moments_service.dart';
 import '../services/friends_service.dart';
 import '../services/chat_service.dart';
 import '../services/locations_service.dart';
+import '../services/user_profile_service.dart';
 import '../models/user_model.dart';
 
 class MomentDetailPage extends StatefulWidget {
@@ -22,11 +23,14 @@ class _MomentDetailPageState extends State<MomentDetailPage> {
   final FriendsService _friendsService = FriendsService();
   final ChatService _chatService = ChatService();
   final LocationsService _locationsService = LocationsService();
+  final UserProfileService _userProfileService = UserProfileService();
   final FirebaseAuth _auth = FirebaseAuth.instance;
   
   late MomentModel _moment;
   List<UserModel> _invitedFriendProfiles = [];
   bool _isLoadingFriends = false;
+  UserModel? _creator;
+  bool _isLoadingCreator = false;
   
   // Edit mode state
   bool _isEditMode = false;
@@ -52,6 +56,33 @@ class _MomentDetailPageState extends State<MomentDetailPage> {
     _selectedDate = _moment.dateTime;
     _selectedTime = TimeOfDay.fromDateTime(_moment.dateTime);
     _loadInvitedFriends();
+    _loadCreator();
+  }
+
+  Future<void> _loadCreator() async {
+    setState(() => _isLoadingCreator = true);
+    try {
+      final creator = await _userProfileService.getUserByUid(_moment.createdBy);
+      if (mounted) {
+        setState(() {
+          _creator = creator;
+          _isLoadingCreator = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoadingCreator = false);
+        debugPrint('Error loading creator: $e');
+      }
+    }
+  }
+
+  String _getCreatorDisplayName() {
+    if (_creator == null) return '';
+    return _creator!.name ?? 
+           _creator!.displayName ?? 
+           _creator!.email ?? 
+           'Unknown';
   }
 
   @override
@@ -103,6 +134,16 @@ class _MomentDetailPageState extends State<MomentDetailPage> {
     try {
       int successCount = 0;
       int failCount = 0;
+
+      // Collect friend IDs for batch invite
+      final friendIds = selectedFriends.map((f) => f.uid).toList();
+      
+      // Add all selected friends to invitedFriends array
+      try {
+        await _momentsService.inviteFriends(_moment.id, friendIds);
+      } catch (e) {
+        debugPrint('Error adding friends to invitedFriends: $e');
+      }
 
       for (final friend in selectedFriends) {
         try {
@@ -573,6 +614,32 @@ class _MomentDetailPageState extends State<MomentDetailPage> {
                   ),
                 ],
               ),
+              const SizedBox(height: 8),
+              // Creator label
+              if (_isLoadingCreator)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Text(
+                    'Created by...',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.grey.shade600,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                )
+              else if (_creator != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Text(
+                    'Created by ${_getCreatorDisplayName()}',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.grey.shade600,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ),
               const SizedBox(height: 16),
 
               // Description

@@ -33,6 +33,7 @@ class ConversationDetailPage extends StatefulWidget {
 class _ConversationDetailPageState extends State<ConversationDetailPage> {
   final ChatService _chatService = ChatService();
   final ScrollController _scrollController = ScrollController();
+  int _previousMessageCount = 0;
 
   @override
   void initState() {
@@ -41,6 +42,16 @@ class _ConversationDetailPageState extends State<ConversationDetailPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _chatService.markMessagesAsRead(widget.conversationId);
     });
+  }
+
+  void _scrollToBottom() {
+    if (_scrollController.hasClients) {
+      final maxScroll = _scrollController.position.maxScrollExtent;
+      // Only scroll if content is scrollable (there's scrollable content)
+      if (maxScroll > 0) {
+        _scrollController.jumpTo(maxScroll);
+      }
+    }
   }
 
   @override
@@ -127,6 +138,16 @@ class _ConversationDetailPageState extends State<ConversationDetailPage> {
                       ),
                     ),
                   );
+                }
+
+                // Scroll to bottom when messages are loaded or updated
+                final messageCount = messages.length;
+                if (messageCount != _previousMessageCount) {
+                  _previousMessageCount = messageCount;
+                  // Use post frame callback to ensure the list is built before scrolling
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    _scrollToBottom();
+                  });
                 }
 
                 return ListView.builder(

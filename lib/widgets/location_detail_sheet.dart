@@ -67,7 +67,8 @@ class _LocationDetailSheetState extends State<LocationDetailSheet> {
       onTap: _toggleSave,
       borderRadius: BorderRadius.circular(999),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+        constraints: const BoxConstraints(minHeight: 72),
         decoration: BoxDecoration(
           color: bgColor,
           borderRadius: BorderRadius.circular(999),
@@ -75,6 +76,7 @@ class _LocationDetailSheetState extends State<LocationDetailSheet> {
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Icon(
@@ -98,43 +100,55 @@ class _LocationDetailSheetState extends State<LocationDetailSheet> {
   }
 
   Widget _buildSendSceneButton() {
-    return InkWell(
-      onTap: () {
-        showDialog(
-          context: context,
-          barrierColor: Colors.black.withOpacity(0.4),
-          builder: (context) => SendSceneSheet(
-            locationId: widget.location.id,
-          ),
-        );
-      },
-      borderRadius: BorderRadius.circular(999),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF8FAFC),
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: const Color(0xFFE2E8F0), width: 2),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: const [
-            Icon(
-              Icons.share,
-              size: 20,
-              color: Color(0xFF475569),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          showDialog(
+            context: context,
+            barrierColor: Colors.black.withOpacity(0.4),
+            builder: (context) => SendSceneSheet(
+              locationId: widget.location.id,
             ),
-            SizedBox(height: 4),
-            Text(
-              'Send Scene™',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
+          );
+        },
+        borderRadius: BorderRadius.circular(999),
+        splashColor: const Color(0xFF475569).withOpacity(0.1),
+        highlightColor: const Color(0xFF475569).withOpacity(0.05),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
+          constraints: const BoxConstraints(minHeight: 72),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: const Color(0xFFE2E8F0), width: 2),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: const [
+              Icon(
+                Icons.share,
+                size: 20,
                 color: Color(0xFF475569),
               ),
-            ),
-          ],
+              SizedBox(height: 4),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  'Send Scene™',
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFF475569),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -157,7 +171,8 @@ class _LocationDetailSheetState extends State<LocationDetailSheet> {
       },
       borderRadius: BorderRadius.circular(999),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
+        constraints: const BoxConstraints(minHeight: 72),
         decoration: BoxDecoration(
           color: const Color(0xFFEEF2FF),
           borderRadius: BorderRadius.circular(999),
@@ -165,6 +180,7 @@ class _LocationDetailSheetState extends State<LocationDetailSheet> {
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: const [
             Icon(
@@ -339,12 +355,29 @@ class _LocationDetailSheetState extends State<LocationDetailSheet> {
                         ),
                         const SizedBox(height: 24),
                         Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Expanded(child: _buildSaveButton(loc)),
-                            const SizedBox(width: 12),
-                            Expanded(child: _buildSendSceneButton()),
-                            const SizedBox(width: 12),
-                            Expanded(child: _buildCreateMomentButton()),
+                            Expanded(
+                              flex: 8,
+                              child: Padding(
+                                padding: const EdgeInsets.only(right: 6),
+                                child: _buildSaveButton(loc),
+                              ),
+                            ),
+                            Expanded(
+                              flex: 12,
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 6),
+                                child: _buildSendSceneButton(),
+                              ),
+                            ),
+                            Expanded(
+                              flex: 10,
+                              child: Padding(
+                                padding: const EdgeInsets.only(left: 6),
+                                child: _buildCreateMomentButton(),
+                              ),
+                            ),
                           ],
                         ),
                         const SizedBox(height: 24),

@@ -1,7 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/notification_model.dart';
+import '../models/conversation_model.dart';
+import '../models/user_model.dart';
 import '../services/notification_service.dart';
+import '../services/user_profile_service.dart';
+import 'conversation_detail_page.dart';
 
 class NotificationsPage extends StatefulWidget {
   const NotificationsPage({super.key});
@@ -12,6 +18,9 @@ class NotificationsPage extends StatefulWidget {
 
 class _NotificationsPageState extends State<NotificationsPage> {
   final NotificationService _notificationService = NotificationService();
+  final UserProfileService _userProfileService = UserProfileService();
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
   String _formatTime(DateTime dateTime) {
     final now = DateTime.now();
@@ -76,8 +85,60 @@ class _NotificationsPageState extends State<NotificationsPage> {
         Navigator.pushNamed(context, '/friends');
         break;
       case 'message':
-        // Could navigate to specific conversation if data contains conversationId
-        Navigator.pushNamed(context, '/friend');
+        // Navigate directly to the conversation if conversationId is available
+        final conversationId = notification.data?['conversationId'] as String?;
+        if (conversationId != null) {
+          try {
+            // Get conversation document
+            final conversationDoc = await _firestore
+                .collection('conversations')
+                .doc(conversationId)
+                .get();
+            
+            if (conversationDoc.exists && mounted) {
+              final conversation = Conversation.fromFirestore(
+                conversationDoc.data()!,
+                conversationDoc.id,
+              );
+              
+              // Get the other user's ID
+              final currentUserId = _auth.currentUser?.uid;
+              if (currentUserId != null) {
+                final otherUserId = conversation.getOtherParticipant(currentUserId);
+                
+                // Get the other user's profile
+                final otherUser = await _userProfileService.getUserByUid(otherUserId);
+                
+                if (mounted) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ConversationDetailPage(
+                        conversationId: conversationId,
+                        otherUser: otherUser ?? UserModel(uid: otherUserId),
+                      ),
+                    ),
+                  );
+                }
+              } else {
+                // Fallback to chat page if not authenticated
+                Navigator.pushNamed(context, '/friend');
+              }
+            } else {
+              // Conversation doesn't exist, go to chat page
+              Navigator.pushNamed(context, '/friend');
+            }
+          } catch (e) {
+            debugPrint('Error navigating to conversation: $e');
+            // Fallback to chat page on error
+            if (mounted) {
+              Navigator.pushNamed(context, '/friend');
+            }
+          }
+        } else {
+          // No conversationId, go to chat page
+          Navigator.pushNamed(context, '/friend');
+        }
         break;
       case 'moment_invite':
         // Could navigate to moment details
