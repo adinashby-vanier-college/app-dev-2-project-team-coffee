@@ -106,6 +106,34 @@ class _NotificationsPageState extends State<NotificationsPage> {
                     const SnackBar(content: Text('All notifications marked as read')),
                   );
                 }
+              } else if (value == 'clear_all') {
+                final confirmed = await showDialog<bool>(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('Clear All Notifications'),
+                    content: const Text('Are you sure you want to delete all notifications? This cannot be undone.'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pop(false),
+                        child: const Text('Cancel'),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pop(true),
+                        style: TextButton.styleFrom(foregroundColor: Colors.red),
+                        child: const Text('Delete All'),
+                      ),
+                    ],
+                  ),
+                );
+
+                if (confirmed == true && mounted) {
+                  await _notificationService.deleteAllNotifications();
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('All notifications deleted')),
+                    );
+                  }
+                }
               }
             },
             itemBuilder: (context) => [
@@ -116,6 +144,16 @@ class _NotificationsPageState extends State<NotificationsPage> {
                     Icon(Icons.done_all, size: 20),
                     SizedBox(width: 8),
                     Text('Mark all as read'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'clear_all',
+                child: Row(
+                  children: [
+                    Icon(Icons.delete_sweep, size: 20, color: Colors.red),
+                    SizedBox(width: 8),
+                    Text('Clear all', style: TextStyle(color: Colors.red)),
                   ],
                 ),
               ),

@@ -169,7 +169,7 @@ class _MomentsPageState extends State<MomentsPage> with SingleTickerProviderStat
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.link, size: 14, color: Colors.blue.shade700),
+                          Icon(Icons.send, size: 14, color: Colors.blue.shade700),
                           const SizedBox(width: 4),
                           Text(
                             'Shareable',

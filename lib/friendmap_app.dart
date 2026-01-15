@@ -16,6 +16,7 @@ import 'providers/saved_locations_provider.dart';
 import 'providers/location_tracking_provider.dart';
 import 'services/friends_service.dart';
 import 'services/notification_service.dart';
+import 'services/notification_manager.dart';
 import 'services/friend_request_manager.dart';
 import 'services/phone_auth_service.dart';
 import 'pages/landing_page.dart';
@@ -31,11 +32,19 @@ class FriendmapApp extends StatefulWidget {
 
 class _FriendmapAppState extends State<FriendmapApp> {
   final NotificationService _notificationService = NotificationService();
+  final NotificationManager _notificationManager = NotificationManager();
 
   @override
   void initState() {
     super.initState();
     _notificationService.initialize();
+    _notificationManager.initialize();
+  }
+
+  @override
+  void dispose() {
+    _notificationManager.dispose();
+    super.dispose();
   }
 
   @override
@@ -53,6 +62,9 @@ class _FriendmapAppState extends State<FriendmapApp> {
             _notificationService,
           ),
           lazy: false, // Ensure it starts listening immediately
+        ),
+        ChangeNotifierProvider.value(
+          value: _notificationManager,
         ),
       ],
       child: MaterialApp(

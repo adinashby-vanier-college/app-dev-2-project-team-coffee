@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 import '../config/app_config.dart';
 import '../models/user_model.dart';
@@ -164,12 +165,18 @@ class _FriendsPageState extends State<FriendsPage> {
   Widget _buildFriendRequestTile(FriendRequest request, UserModel? fromUser) {
     final displayName = fromUser?.name ?? fromUser?.email ?? 'Unknown User';
     final initial = displayName.isNotEmpty ? displayName[0].toUpperCase() : '?';
+    final photoURL = fromUser?.photoURL;
 
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 4.0),
       child: ListTile(
         leading: CircleAvatar(
-          child: Text(initial),
+          backgroundImage: photoURL != null && photoURL.isNotEmpty
+              ? CachedNetworkImageProvider(photoURL)
+              : null,
+          child: photoURL == null || photoURL.isEmpty
+              ? Text(initial)
+              : null,
         ),
         title: Text(displayName),
         subtitle: Text(fromUser?.email ?? ''),
@@ -195,12 +202,18 @@ class _FriendsPageState extends State<FriendsPage> {
   Widget _buildFriendTile(UserModel friend) {
     final displayName = friend.name ?? friend.email ?? 'Unknown User';
     final initial = displayName.isNotEmpty ? displayName[0].toUpperCase() : '?';
+    final photoURL = friend.photoURL;
 
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 4.0),
       child: ListTile(
         leading: CircleAvatar(
-          child: Text(initial),
+          backgroundImage: photoURL != null && photoURL.isNotEmpty
+              ? CachedNetworkImageProvider(photoURL)
+              : null,
+          child: photoURL == null || photoURL.isEmpty
+              ? Text(initial)
+              : null,
         ),
         title: Text(displayName),
         subtitle: Text(friend.email ?? ''),
@@ -224,12 +237,18 @@ class _FriendsPageState extends State<FriendsPage> {
   Widget _buildSearchResultTile(UserModel user) {
     final displayName = user.name ?? user.email ?? 'Unknown User';
     final initial = displayName.isNotEmpty ? displayName[0].toUpperCase() : '?';
+    final photoURL = user.photoURL;
 
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 4.0),
       child: ListTile(
         leading: CircleAvatar(
-          child: Text(initial),
+          backgroundImage: photoURL != null && photoURL.isNotEmpty
+              ? CachedNetworkImageProvider(photoURL)
+              : null,
+          child: photoURL == null || photoURL.isEmpty
+              ? Text(initial)
+              : null,
         ),
         title: Text(displayName),
         subtitle: Text(user.email ?? ''),

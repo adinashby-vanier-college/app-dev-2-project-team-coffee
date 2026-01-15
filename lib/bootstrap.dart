@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'firebase_options.dart';
 
 import 'config/app_config.dart';
@@ -14,6 +16,17 @@ Future<void> bootstrap(AppEnvironment environment) async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  // Enable Firestore offline persistence
+  try {
+    await FirebaseFirestore.instance.enablePersistence(
+      const PersistenceSettings(synchronizeTabs: true),
+    );
+    debugPrint('Firestore offline persistence enabled');
+  } catch (e) {
+    // On web or if already enabled, this may fail - that's okay
+    debugPrint('Firestore persistence setup: $e');
+  }
 
   // Initialize locations if they don't exist
   // Note: This requires authentication. If locations need to be uploaded initially,

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -78,13 +79,17 @@ class MomentsService {
   }
 
   /// Gets moments the current user is invited to
+  /// This includes:
+  /// 1. Moments where the user is in the invitedFriends array
+  /// 2. Moments that were shared with the user in chat messages
   Stream<List<MomentModel>> getInvitedMomentsStream() {
     final user = _auth.currentUser;
     if (user == null) {
       return Stream.value([]);
     }
 
-    return _firestore
+    // Stream 1: Moments from invitedFriends array
+    final invitedFriendsStream = _firestore
         .collection(collectionName)
         .where('invitedFriends', arrayContains: user.uid)
         .orderBy('dateTime', descending: false)
@@ -94,6 +99,204 @@ class MomentsService {
           .map((doc) => MomentModel.fromFirestore(doc.data(), doc.id))
           .toList();
     });
+
+    // Stream 2: Moments shared in chat messages
+    final chatMomentsStream = _getMomentsFromChatMessages(user.uid);
+
+    // Combine both streams
+    return _combineStreams(invitedFriendsStream, chatMomentsStream);
+  }
+
+  /// Gets moments that were shared with the user in chat messages
+  Stream<List<MomentModel>> _getMomentsFromChatMessages(String userId) {
+    final controller = StreamController<List<MomentModel>>();
+    final subscriptions = <StreamSubscription>[];
+    final momentIds = <String>{};
+    bool isInitialized = false;
+    Timer? debounceTimer;
+
+    // Listen to conversations
+    final conversationsSub = _firestore
+        .collection('conversations')
+        .where('participants', arrayContains: userId)
+        .snapshots()
+        .listen(
+      (conversationsSnapshot) {
+        // Cancel previous message subscriptions
+        for (var sub in subscriptions) {
+          sub.cancel();
+        }
+        subscriptions.clear();
+        momentIds.clear();
+        debounceTimer?.cancel();
+
+        if (conversationsSnapshot.docs.isEmpty) {
+          if (isInitialized) {
+            controller.add(<MomentModel>[]);
+          }
+          isInitialized = true;
+          return;
+        }
+
+        // Listen to messages in each conversation
+        for (var conversationDoc in conversationsSnapshot.docs) {
+          final conversationId = conversationDoc.id;
+          
+          final messagesSub = _firestore
+              .collection('conversations')
+              .doc(conversationId)
+              .collection('messages')
+              .snapshots()
+              .listen(
+            (messagesSnapshot) {
+              // Update momentIds from messages
+              for (var messageDoc in messagesSnapshot.docs) {
+                final messageData = messageDoc.data();
+                final senderId = messageData['senderId'] as String?;
+                final momentId = messageData['momentId'] as String?;
+
+                // Only include moments sent TO the user (not by the user)
+                if (momentId != null && senderId != null && senderId != userId) {
+                  momentIds.add(momentId);
+                }
+              }
+              
+              // Debounce to avoid multiple simultaneous fetches
+              debounceTimer?.cancel();
+              debounceTimer = Timer(const Duration(milliseconds: 300), () {
+                _fetchAndEmitMoments(momentIds, userId, controller);
+              });
+            },
+            onError: (error) {
+              debugPrint('MomentsService: Error in message stream for conversation $conversationId: $error');
+            },
+          );
+          
+          subscriptions.add(messagesSub);
+        }
+        
+        isInitialized = true;
+      },
+      onError: (error) {
+        debugPrint('MomentsService: Error in conversations stream: $error');
+        controller.addError(error);
+      },
+    );
+
+    controller.onCancel = () {
+      conversationsSub.cancel();
+      for (var sub in subscriptions) {
+        sub.cancel();
+      }
+      debounceTimer?.cancel();
+    };
+
+    return controller.stream;
+  }
+
+  /// Fetches moments by their IDs and emits them
+  Future<void> _fetchAndEmitMoments(
+    Set<String> momentIds,
+    String userId,
+    StreamController<List<MomentModel>> controller,
+  ) async {
+    if (momentIds.isEmpty) {
+      controller.add(<MomentModel>[]);
+      return;
+    }
+
+    // Fetch all moments by their IDs
+    final moments = <MomentModel>[];
+    for (var momentId in momentIds) {
+      try {
+        final momentDoc = await _firestore
+            .collection(collectionName)
+            .doc(momentId)
+            .get();
+
+        if (momentDoc.exists) {
+          final moment = MomentModel.fromFirestore(momentDoc.data()!, momentDoc.id);
+          // Only include if the user didn't create it (to avoid duplicates with "My Moments")
+          if (moment.createdBy != userId) {
+            moments.add(moment);
+          }
+        }
+      } catch (e) {
+        debugPrint('MomentsService: Error fetching moment $momentId: $e');
+        // Continue with other moments
+      }
+    }
+
+    // Sort by dateTime
+    moments.sort((a, b) => a.dateTime.compareTo(b.dateTime));
+    controller.add(moments);
+  }
+
+  /// Combines two streams of moment lists, removing duplicates
+  Stream<List<MomentModel>> _combineStreams(
+    Stream<List<MomentModel>> stream1,
+    Stream<List<MomentModel>> stream2,
+  ) {
+    final controller = StreamController<List<MomentModel>>();
+    final latest1 = <MomentModel>[];
+    final latest2 = <MomentModel>[];
+    bool hasData1 = false;
+    bool hasData2 = false;
+
+    StreamSubscription? sub1;
+    StreamSubscription? sub2;
+
+    void emitCombined() {
+      if (hasData1 || hasData2) {
+        // Combine and remove duplicates by ID
+        final combined = <String, MomentModel>{};
+        
+        for (var moment in latest1) {
+          combined[moment.id] = moment;
+        }
+        
+        for (var moment in latest2) {
+          combined[moment.id] = moment;
+        }
+
+        final result = combined.values.toList();
+        result.sort((a, b) => a.dateTime.compareTo(b.dateTime));
+        controller.add(result);
+      }
+    }
+
+    sub1 = stream1.listen(
+      (moments) {
+        latest1.clear();
+        latest1.addAll(moments);
+        hasData1 = true;
+        emitCombined();
+      },
+      onError: (error) {
+        debugPrint('MomentsService: Error in stream1: $error');
+        controller.addError(error);
+      },
+    );
+
+    sub2 = stream2.listen(
+      (moments) {
+        latest2.clear();
+        latest2.addAll(moments);
+        hasData2 = true;
+        emitCombined();
+      },
+      onError: (error) {
+        debugPrint('MomentsService: Error in stream2: $error');
+        controller.addError(error);
+      },
+    );
+
+    controller.onCancel = () {
+      sub1?.cancel();
+      sub2?.cancel();
+    };
+
+    return controller.stream;
   }
 
   /// Gets a single moment by ID

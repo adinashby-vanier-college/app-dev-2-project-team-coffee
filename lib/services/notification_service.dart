@@ -179,5 +179,24 @@ class NotificationService {
         .doc(notificationId)
         .delete();
   }
+
+  /// Deletes all notifications for the current user
+  Future<void> deleteAllNotifications() async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+
+    final batch = _firestore.batch();
+    final snapshot = await _firestore
+        .collection('users')
+        .doc(user.uid)
+        .collection('notifications')
+        .get();
+
+    for (var doc in snapshot.docs) {
+      batch.delete(doc.reference);
+    }
+
+    await batch.commit();
+  }
 }
 

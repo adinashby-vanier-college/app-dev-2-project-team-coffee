@@ -329,6 +329,52 @@
     .download-app a:hover {
       text-decoration: underline;
     }
+
+    .creator-ribbon {
+      background: linear-gradient(135deg, #f0f4ff 0%, #e0e7ff 100%);
+      border-bottom: 2px solid #c7d2fe;
+      padding: 12px 24px;
+      display: none;
+      align-items: center;
+      gap: 12px;
+      color: #4c1d95;
+      font-size: 14px;
+    }
+
+    .creator-ribbon.show {
+      display: flex;
+    }
+
+    .creator-ribbon svg {
+      width: 18px;
+      height: 18px;
+      flex-shrink: 0;
+      color: #6366f1;
+    }
+
+    .creator-ribbon-text {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .creator-ribbon-label {
+      font-size: 11px;
+      opacity: 0.7;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .creator-ribbon-name {
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    .creator-ribbon-email {
+      font-size: 12px;
+      opacity: 0.8;
+    }
   </style>
 </head>
 
@@ -337,6 +383,17 @@
     <div class="header">
       <h1>🗺️ FriendMap</h1>
       <p>You've been invited to a Moment!</p>
+    </div>
+
+    <div class="creator-ribbon" id="creatorRibbon">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+      </svg>
+      <div class="creator-ribbon-text">
+        <span class="creator-ribbon-label">Created by</span>
+        <span class="creator-ribbon-name" id="creatorName">Loading...</span>
+        <span class="creator-ribbon-email" id="creatorEmail"></span>
+      </div>
     </div>
 
     <div class="loading" id="loading">
@@ -474,7 +531,7 @@
   <!-- Firebase SDK -->
   <script type="module">
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-    import { getFirestore, collection, query, where, getDocs, doc, updateDoc, arrayUnion, Timestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+    import { getFirestore, collection, query, where, getDocs, doc, updateDoc, arrayUnion, Timestamp, getDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
     import { firebaseConfig } from './config.js';
 
     const app = initializeApp(firebaseConfig);
@@ -495,6 +552,9 @@
     const errorMessage = document.getElementById('errorMessage');
     const rsvpForm = document.getElementById('rsvpForm');
     const submitBtn = document.getElementById('submitBtn');
+    const creatorRibbon = document.getElementById('creatorRibbon');
+    const creatorName = document.getElementById('creatorName');
+    const creatorEmail = document.getElementById('creatorEmail');
 
     // Format date
     function formatDate(timestamp) {
@@ -509,6 +569,44 @@
         minute: '2-digit'
       };
       return date.toLocaleDateString('en-US', options);
+    }
+
+    // Load creator information
+    async function loadCreatorInfo(creatorUid) {
+      if (!creatorUid) {
+        return;
+      }
+
+      try {
+        const userDocRef = doc(db, 'users', creatorUid);
+        const userDoc = await getDoc(userDocRef);
+
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          const name = userData.name || userData.displayName || 'Unknown User';
+          const email = userData.email || '';
+
+          creatorName.textContent = name;
+          if (email) {
+            creatorEmail.textContent = email;
+            creatorEmail.style.display = 'block';
+          } else {
+            creatorEmail.style.display = 'none';
+          }
+          creatorRibbon.classList.add('show');
+        } else {
+          // If user document doesn't exist, try to show the UID or hide the ribbon
+          creatorName.textContent = 'Unknown User';
+          creatorEmail.style.display = 'none';
+          creatorRibbon.classList.add('show');
+        }
+      } catch (error) {
+        console.error('Error loading creator info:', error);
+        // Show ribbon even if there's an error, but with fallback text
+        creatorName.textContent = 'Unknown User';
+        creatorEmail.style.display = 'none';
+        creatorRibbon.classList.add('show');
+      }
     }
 
     // Load moment data
@@ -543,6 +641,11 @@
           document.getElementById('eventDescContainer').style.display = 'flex';
         }
 
+        // Load creator information
+        if (momentData.createdBy) {
+          await loadCreatorInfo(momentData.createdBy);
+        }
+
         showForm();
       } catch (error) {
         console.error('Error loading moment:', error);
@@ -555,6 +658,7 @@
       notFound.style.display = 'none';
       formContent.style.display = 'none';
       successMessage.style.display = 'none';
+      creatorRibbon.classList.remove('show');
     }
 
     function showNotFound() {
@@ -562,6 +666,7 @@
       notFound.style.display = 'block';
       formContent.style.display = 'none';
       successMessage.style.display = 'none';
+      creatorRibbon.classList.remove('show');
     }
 
     function showForm() {
