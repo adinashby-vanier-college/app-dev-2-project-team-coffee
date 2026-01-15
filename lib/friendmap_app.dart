@@ -11,6 +11,7 @@ import 'pages/sms_code_screen.dart';
 import 'providers/auth_provider.dart';
 import 'providers/phone_auth_provider.dart';
 import 'providers/saved_locations_provider.dart';
+import 'providers/location_tracking_provider.dart';
 import 'services/friends_service.dart';
 import 'services/notification_service.dart';
 import 'services/friend_request_manager.dart';
@@ -43,6 +44,7 @@ class _FriendmapAppState extends State<FriendmapApp> {
         ChangeNotifierProvider(
             create: (_) => PhoneAuthProvider(PhoneAuthService())),
         ChangeNotifierProvider(create: (_) => SavedLocationsProvider()),
+        ChangeNotifierProvider(create: (_) => LocationTrackingProvider()),
         ChangeNotifierProvider(
           create: (_) => FriendRequestManager(
             FriendsService(), // You might want to get this from GetIt if available, or just instance it

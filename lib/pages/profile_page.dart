@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../providers/saved_locations_provider.dart';
+import '../providers/location_tracking_provider.dart';
 import '../services/storage_service.dart';
 import '../services/user_profile_service.dart';
 import '../models/user_model.dart';
@@ -9,7 +10,6 @@ import '../services/locations_service.dart';
 import '../models/location_details.dart';
 import '../widgets/location_detail_sheet.dart';
 import '../widgets/user_name_editor.dart';
-import '../services/location_awareness_service.dart';
 
 
 class ProfilePage extends StatefulWidget {
@@ -26,11 +26,6 @@ class _ProfilePageState extends State<ProfilePage> {
   UserModel? _userProfile;
   bool _isLoading = true;
   bool _isUploadingPhoto = false;
-
-  // Location awareness state
-  Map<String, dynamic>? _currentLocation;
-  bool _isLoadingLocation = false;
-  String? _locationError;
 
   @override
   void initState() {
@@ -256,25 +251,19 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Future<void> _fetchCurrentLocation() async {
-    setState(() {
-      _isLoadingLocation = true;
-      _locationError = null;
-    });
+  Future<void> _toggleLocationTracking(BuildContext context) async {
+    final provider = Provider.of<LocationTrackingProvider>(context, listen: false);
     try {
-      final locationService = LocationAwarenessService.instance;
-      final locationData = await locationService.getUserLocationWithAddress();
-      
-      setState(() {
-        _currentLocation = locationData;
-        _isLoadingLocation = false;
-      });
+      await provider.toggleLocationTracking();
+      if (mounted && provider.locationError != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Location error: ${provider.locationError}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     } catch (e) {
-      setState(() {
-        _locationError = e.toString();
-        _isLoadingLocation = false;
-        _currentLocation = null;
-      });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -401,119 +390,142 @@ class _ProfilePageState extends State<ProfilePage> {
                         ),
                         const SizedBox(height: 12),
                         // Location Button
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton.icon(
-                            onPressed: _isLoadingLocation ? null : _fetchCurrentLocation,
-                            icon: _isLoadingLocation
-                                ? const SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: Colors.white,
-                                    ),
-                                  )
-                                : const Icon(Icons.location_on),
-                            label: Text(_isLoadingLocation ? 'Getting location...' : 'Get My Location'),
-                            style: ElevatedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                            ),
-                          ),
+                        Consumer<LocationTrackingProvider>(
+                          builder: (context, locationProvider, _) {
+                            final isTracking = locationProvider.isTrackingEnabled;
+                            final isLoading = locationProvider.isLoadingLocation;
+                            final currentLocation = locationProvider.currentLocation;
+                            
+                            return SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton.icon(
+                                onPressed: isLoading ? null : () => _toggleLocationTracking(context),
+                                icon: isLoading
+                                    ? const SizedBox(
+                                        width: 16,
+                                        height: 16,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white,
+                                        ),
+                                      )
+                                    : Icon(isTracking ? Icons.location_off : Icons.location_on),
+                                label: Text(
+                                  isLoading 
+                                      ? 'Getting location...' 
+                                      : (isTracking ? 'Turn Off Location' : 'Turn On Location'),
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  backgroundColor: isTracking ? Colors.red.shade600 : null,
+                                ),
+                              ),
+                            );
+                          },
                         ),
                         const SizedBox(height: 12),
                         // Location Info Label/Tag
-                        if (_currentLocation != null)
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.blue.shade50,
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: Colors.blue.shade200),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
+                        Consumer<LocationTrackingProvider>(
+                          builder: (context, locationProvider, _) {
+                            final currentLocation = locationProvider.currentLocation;
+                            final locationError = locationProvider.locationError;
+                            
+                            if (currentLocation != null) {
+                              return Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue.shade50,
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: Colors.blue.shade200),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Icon(Icons.info_outline, size: 16, color: Colors.blue.shade700),
-                                    const SizedBox(width: 6),
+                                    Row(
+                                      children: [
+                                        Icon(Icons.info_outline, size: 16, color: Colors.blue.shade700),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          'Current Location',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.blue.shade900,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 8),
                                     Text(
-                                      'Current Location',
+                                      'Latitude: ${currentLocation['latitude'].toStringAsFixed(6)}',
                                       style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.blue.shade900,
-                                        fontSize: 12,
+                                        fontSize: 11,
+                                        color: Colors.blue.shade800,
+                                        fontFamily: 'monospace',
+                                      ),
+                                    ),
+                                    Text(
+                                      'Longitude: ${currentLocation['longitude'].toStringAsFixed(6)}',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: Colors.blue.shade800,
+                                        fontFamily: 'monospace',
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Address: ${currentLocation['address']}',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: Colors.blue.shade800,
+                                      ),
+                                    ),
+                                    if (currentLocation['accuracy'] != null)
+                                      Padding(
+                                        padding: const EdgeInsets.only(top: 4),
+                                        child: Text(
+                                          'Accuracy: ${currentLocation['accuracy'].toStringAsFixed(1)}m',
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            color: Colors.blue.shade600,
+                                            fontStyle: FontStyle.italic,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              );
+                            } else if (locationError != null) {
+                              return Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.red.shade50,
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: Colors.red.shade200),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.error_outline, size: 16, color: Colors.red.shade700),
+                                    const SizedBox(width: 6),
+                                    Expanded(
+                                      child: Text(
+                                        locationError,
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color: Colors.red.shade800,
+                                        ),
                                       ),
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  'Latitude: ${_currentLocation!['latitude'].toStringAsFixed(6)}',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: Colors.blue.shade800,
-                                    fontFamily: 'monospace',
-                                  ),
-                                ),
-                                Text(
-                                  'Longitude: ${_currentLocation!['longitude'].toStringAsFixed(6)}',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: Colors.blue.shade800,
-                                    fontFamily: 'monospace',
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Address: ${_currentLocation!['address']}',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: Colors.blue.shade800,
-                                  ),
-                                ),
-                                if (_currentLocation!['accuracy'] != null)
-                                  Padding(
-                                    padding: const EdgeInsets.only(top: 4),
-                                    child: Text(
-                                      'Accuracy: ${_currentLocation!['accuracy'].toStringAsFixed(1)}m',
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        color: Colors.blue.shade600,
-                                        fontStyle: FontStyle.italic,
-                                      ),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          )
-                        else if (_locationError != null)
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.red.shade50,
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: Colors.red.shade200),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(Icons.error_outline, size: 16, color: Colors.red.shade700),
-                                const SizedBox(width: 6),
-                                Expanded(
-                                  child: Text(
-                                    _locationError!,
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: Colors.red.shade800,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
+                              );
+                            } else {
+                              return const SizedBox.shrink();
+                            }
+                          },
+                        ),
                         const SizedBox(height: 40),
                         // Saved Locations Section
                         Align(
