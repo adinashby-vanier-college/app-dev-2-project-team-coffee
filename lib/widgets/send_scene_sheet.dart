@@ -101,119 +101,192 @@ class _SendSceneSheetState extends State<SendSceneSheet> {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      backgroundColor: Colors.transparent,
       insetPadding: const EdgeInsets.all(16),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 500, maxHeight: 600),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Header
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Row(
-                  children: [
-                    const Expanded(
-                      child: Text(
-                        'Send Scene™',
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF1E293B),
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 448, maxHeight: 600),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.25),
+              blurRadius: 50,
+              offset: const Offset(0, 25),
+              spreadRadius: -12,
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Header
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: const BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(color: Color(0xFFF1F5F9), width: 1),
+                ),
+              ),
+              child: Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'Send Scene™',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF1E293B),
+                      ),
+                    ),
+                  ),
+                  Material(
+                    color: const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(20),
+                    child: InkWell(
+                      onTap: () => Navigator.of(context).pop(),
+                      borderRadius: BorderRadius.circular(20),
+                      child: Container(
+                        width: 32,
+                        height: 32,
+                        alignment: Alignment.center,
+                        child: const Icon(
+                          Icons.close,
+                          size: 20,
+                          color: Color(0xFF64748B),
                         ),
                       ),
                     ),
-                    IconButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      icon: const Icon(Icons.close),
-                      splashRadius: 20,
-                    ),
-                  ],
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 4, 24, 0),
+              child: const Text(
+                'Select friends to share with',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFF64748B),
                 ),
               ),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                child: Text(
-                  'Select friends to share with',
-                  style: TextStyle(fontSize: 14, color: Color(0xFF64748B)),
-                ),
-              ),
-              
-              const Divider(height: 32),
+            ),
 
-              // Content
-              Flexible(
-                child: FutureBuilder<List<UserModel>>(
-                  future: _friendsFuture,
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(
-                        child: Padding(
-                          padding: EdgeInsets.all(40),
-                          child: CircularProgressIndicator(),
+            // Content
+            Flexible(
+              child: FutureBuilder<List<UserModel>>(
+                future: _friendsFuture,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(40),
+                        child: CircularProgressIndicator(),
+                      ),
+                    );
+                  }
+                  if (snapshot.hasError) {
+                    return Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Text(
+                          'Error: ${snapshot.error}',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(color: Colors.red),
                         ),
-                      );
-                    }
-                    if (snapshot.hasError) {
-                      return Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(24),
-                          child: Text('Error: ${snapshot.error}', 
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(color: Colors.red)),
-                        ),
-                      );
-                    }
-                    
-                    final friends = snapshot.data ?? [];
-                    if (friends.isEmpty) {
-                      return const Center(
-                        child: Padding(
-                          padding: EdgeInsets.all(40),
-                          child: Text('No friends yet', 
-                            style: TextStyle(color: Color(0xFF94A3B8))),
-                        ),
-                      );
-                    }
+                      ),
+                    );
+                  }
 
-                    return ListView.builder(
-                      shrinkWrap: true,
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      itemCount: friends.length,
-                      itemBuilder: (context, index) {
-                        final friend = friends[index];
-                        final isSelected = _selectedFriends.contains(friend.uid);
-                        
-                        return Container(
-                          margin: const EdgeInsets.only(bottom: 8),
+                  final friends = snapshot.data ?? [];
+                  if (friends.isEmpty) {
+                    return const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(32),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'No friends yet',
+                              style: TextStyle(
+                                color: Color(0xFF64748B),
+                                fontSize: 14,
+                              ),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              'Add friends to share locations with them',
+                              style: TextStyle(
+                                color: Color(0xFF94A3B8),
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+
+                  return ListView.builder(
+                    shrinkWrap: true,
+                    padding: const EdgeInsets.all(16),
+                    itemCount: friends.length,
+                    itemBuilder: (context, index) {
+                      final friend = friends[index];
+                      final isSelected = _selectedFriends.contains(friend.uid);
+
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        child: Material(
+                          color: Colors.transparent,
                           child: InkWell(
                             onTap: () => _handleFriendToggle(friend.uid),
-                            borderRadius: BorderRadius.circular(16),
+                            borderRadius: BorderRadius.circular(12),
                             child: Container(
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
-                                color: isSelected ? Colors.blue.withOpacity(0.05) : Colors.transparent,
-                                borderRadius: BorderRadius.circular(16),
+                                color: isSelected
+                                    ? const Color(0xFFEFF6FF)
+                                    : const Color(0xFFF8FAFC),
+                                borderRadius: BorderRadius.circular(12),
                                 border: Border.all(
-                                  color: isSelected ? Colors.blue : Colors.grey.shade200,
-                                  width: 1.5,
+                                  color: isSelected
+                                      ? const Color(0xFF2563EB)
+                                      : Colors.transparent,
+                                  width: 2,
                                 ),
                               ),
                               child: Row(
                                 children: [
-                                  CircleAvatar(
-                                    radius: 20,
-                                    backgroundColor: isSelected ? Colors.blue : Colors.grey.shade100,
-                                    backgroundImage: friend.photoURL?.isNotEmpty == true 
-                                        ? CachedNetworkImageProvider(friend.photoURL!) 
-                                        : null,
-                                    child: friend.photoURL?.isNotEmpty == true 
-                                        ? null 
-                                        : Text(_getFriendInitials(friend), 
-                                            style: TextStyle(color: isSelected ? Colors.white : Colors.grey.shade600, fontSize: 13, fontWeight: FontWeight.bold)),
+                                  Container(
+                                    width: 48,
+                                    height: 48,
+                                    decoration: BoxDecoration(
+                                      color: isSelected
+                                          ? const Color(0xFF2563EB)
+                                          : const Color(0xFFCBD5E1),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: friend.photoURL?.isNotEmpty == true
+                                        ? ClipOval(
+                                            child: CachedNetworkImage(
+                                              imageUrl: friend.photoURL!,
+                                              fit: BoxFit.cover,
+                                            ),
+                                          )
+                                        : Center(
+                                            child: Text(
+                                              _getFriendInitials(friend),
+                                              style: TextStyle(
+                                                color: isSelected
+                                                    ? Colors.white
+                                                    : const Color(0xFF475569),
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ),
                                   ),
                                   const SizedBox(width: 12),
                                   Expanded(
@@ -223,56 +296,128 @@ class _SendSceneSheetState extends State<SendSceneSheet> {
                                           : (friend.displayName?.isNotEmpty == true
                                               ? friend.displayName!
                                               : (friend.email ?? 'Unknown')),
-                                      style: const TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF334155)),
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w500,
+                                        color: Color(0xFF1E293B),
+                                        fontSize: 14,
+                                      ),
                                     ),
                                   ),
-                                  Icon(
-                                    isSelected ? Icons.check_circle : Icons.circle_outlined,
-                                    color: isSelected ? Colors.blue : Colors.grey.shade300,
+                                  Container(
+                                    width: 24,
+                                    height: 24,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: isSelected
+                                            ? const Color(0xFF2563EB)
+                                            : const Color(0xFFCBD5E1),
+                                        width: 2,
+                                      ),
+                                      color: isSelected
+                                          ? const Color(0xFF2563EB)
+                                          : Colors.transparent,
+                                    ),
+                                    child: isSelected
+                                        ? const Icon(
+                                            Icons.check,
+                                            size: 16,
+                                            color: Colors.white,
+                                          )
+                                        : null,
                                   ),
                                 ],
                               ),
                             ),
                           ),
-                        );
-                      },
-                    );
-                  },
-                ),
-              ),
-
-              const Divider(height: 32),
-
-              // Actions
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: TextButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        child: const Text('Cancel', style: TextStyle(color: Color(0xFF64748B))),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: _selectedFriends.isEmpty ? null : _handleSendScene,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue,
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          padding: const EdgeInsets.symmetric(vertical: 14),
                         ),
-                        child: Text('Send (${_selectedFriends.length})'),
-                      ),
-                    ),
-                  ],
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+
+            // Footer
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: const BoxDecoration(
+                border: Border(
+                  top: BorderSide(color: Color(0xFFF1F5F9), width: 1),
                 ),
               ),
-            ],
-          ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Material(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      child: InkWell(
+                        onTap: () => Navigator.of(context).pop(),
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 12,
+                            horizontal: 16,
+                          ),
+                          decoration: BoxDecoration(
+                            border: Border.all(
+                              color: const Color(0xFFE2E8F0),
+                              width: 2,
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Center(
+                            child: Text(
+                              'Cancel',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w500,
+                                color: Color(0xFF334155),
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Material(
+                      color: _selectedFriends.isEmpty
+                          ? const Color(0xFF94A3B8)
+                          : const Color(0xFF2563EB),
+                      borderRadius: BorderRadius.circular(12),
+                      child: InkWell(
+                        onTap: _selectedFriends.isEmpty
+                            ? null
+                            : _handleSendScene,
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 12,
+                            horizontal: 16,
+                          ),
+                          child: Center(
+                            child: Text(
+                              _selectedFriends.isEmpty
+                                  ? 'Send'
+                                  : 'Send (${_selectedFriends.length})',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w500,
+                                color: Colors.white,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:intl/intl.dart';
 
 import '../models/location_details.dart';
 import '../providers/saved_locations_provider.dart';
@@ -100,6 +101,7 @@ class _LocationDetailSheetState extends State<LocationDetailSheet> {
       onTap: () {
         showDialog(
           context: context,
+          barrierColor: Colors.black.withOpacity(0.4),
           builder: (context) => SendSceneSheet(
             locationId: widget.location.id,
           ),
@@ -147,7 +149,7 @@ class _LocationDetailSheetState extends State<LocationDetailSheet> {
       child: Align(
         alignment: Alignment.bottomCenter,
         child: FractionallySizedBox(
-          heightFactor: 0.7,
+          heightFactor: 0.75,
           child: Container(
             decoration: const BoxDecoration(
               color: Colors.white,
@@ -162,19 +164,19 @@ class _LocationDetailSheetState extends State<LocationDetailSheet> {
             ),
             child: Column(
               children: [
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
                 Container(
                   width: 48,
-                  height: 5,
+                  height: 6,
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
+                    color: const Color(0xFFCBD5E1),
                     borderRadius: BorderRadius.circular(999),
                   ),
                 ),
                 const SizedBox(height: 8),
                 Expanded(
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(20, 4, 16, 16),
+                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -185,20 +187,35 @@ class _LocationDetailSheetState extends State<LocationDetailSheet> {
                               child: Text(
                                 loc.name,
                                 style: const TextStyle(
-                                  fontSize: 22,
+                                  fontSize: 24,
                                   fontWeight: FontWeight.bold,
+                                  color: Color(0xFF1E293B),
                                 ),
                               ),
                             ),
-                            IconButton(
-                              onPressed: () => Navigator.of(context).pop(),
-                              icon: const Icon(Icons.close),
+                            Material(
+                              color: const Color(0xFFF1F5F9),
+                              borderRadius: BorderRadius.circular(20),
+                              child: InkWell(
+                                onTap: () => Navigator.of(context).pop(),
+                                borderRadius: BorderRadius.circular(20),
+                                child: Container(
+                                  width: 32,
+                                  height: 32,
+                                  alignment: Alignment.center,
+                                  child: const Icon(
+                                    Icons.close,
+                                    size: 20,
+                                    color: Color(0xFF64748B),
+                                  ),
+                                ),
+                              ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 4),
                         Wrap(
-                          spacing: 6,
+                          spacing: 8,
                           runSpacing: 4,
                           crossAxisAlignment: WrapCrossAlignment.center,
                           children: [
@@ -207,6 +224,7 @@ class _LocationDetailSheetState extends State<LocationDetailSheet> {
                               style: const TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 14,
+                                color: Color(0xFF1E293B),
                               ),
                             ),
                             Row(
@@ -217,45 +235,61 @@ class _LocationDetailSheetState extends State<LocationDetailSheet> {
                                   Icons.star,
                                   size: 14,
                                   color: i < loc.rating.round()
-                                      ? Colors.amber
-                                      : Colors.grey.shade300,
+                                      ? const Color(0xFFFBBF24)
+                                      : const Color(0xFFE2E8F0),
+                                  fill: i < loc.rating.round() ? 1.0 : 0.0,
                                 ),
                               ),
                             ),
                             Text(
                               '(${loc.reviews} reviews)',
+                              style: const TextStyle(
+                                fontSize: 14,
+                                color: Color(0xFF64748B),
+                              ),
+                            ),
+                            const Text(
+                              '•',
                               style: TextStyle(
                                 fontSize: 12,
-                                color: Colors.grey.shade600,
+                                color: Color(0xFFCBD5E1),
                               ),
                             ),
                             Text(
-                              '• ${loc.category}',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey.shade600,
+                              loc.category,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                color: Color(0xFF64748B),
                               ),
                             ),
-                            if (loc.price != null &&
-                                loc.price!.isNotEmpty)
-                              Text(
-                                loc.price!,
+                            if (loc.price != null && loc.price!.isNotEmpty) ...[
+                              const Text(
+                                '•',
                                 style: TextStyle(
                                   fontSize: 12,
-                                  color: Colors.grey.shade600,
+                                  color: Color(0xFFCBD5E1),
                                 ),
                               ),
+                              Text(
+                                loc.price!,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: Color(0xFF64748B),
+                                ),
+                              ),
+                            ],
                           ],
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 24),
                         Text(
                           loc.description,
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: 14,
-                            color: Colors.grey.shade700,
+                            color: Color(0xFF475569),
+                            height: 1.6,
                           ),
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 24),
                         Row(
                           children: [
                             Expanded(child: _buildSaveButton(loc)),
@@ -263,127 +297,270 @@ class _LocationDetailSheetState extends State<LocationDetailSheet> {
                             Expanded(child: _buildSendSceneButton()),
                           ],
                         ),
-                        const SizedBox(height: 16),
-                        ListTile(
-                          contentPadding: EdgeInsets.zero,
-                          leading:
-                              const Icon(Icons.place, color: Colors.blue),
-                          title: Text(
-                            loc.address,
-                            style: const TextStyle(fontSize: 14),
-                          ),
-                          onTap: _openAddress,
+                        const SizedBox(height: 24),
+                        Container(
+                          height: 1,
+                          color: const Color(0xFFF1F5F9),
+                          margin: const EdgeInsets.only(bottom: 16),
                         ),
-                        if (loc.phone != null && loc.phone!.isNotEmpty)
-                          ListTile(
-                            contentPadding: EdgeInsets.zero,
-                            leading:
-                                const Icon(Icons.phone, color: Colors.blue),
-                            title: Text(
-                              loc.phone!,
-                              style: const TextStyle(fontSize: 14),
-                            ),
-                            onTap: () async {
-                              final uri =
-                                  Uri(scheme: 'tel', path: loc.phone);
-                              if (await canLaunchUrl(uri)) {
-                                await launchUrl(uri);
-                              }
-                            },
-                          ),
-                        if (loc.website != null && loc.website!.isNotEmpty)
-                          ListTile(
-                            contentPadding: EdgeInsets.zero,
-                            leading: const Icon(Icons.language,
-                                color: Colors.blue),
-                            title: Text(
-                              loc.website!,
-                              style: const TextStyle(
-                                fontSize: 14,
-                                decoration: TextDecoration.underline,
-                              ),
-                            ),
-                            onTap: () async {
-                              final uri = Uri.parse(loc.website!);
-                              if (await canLaunchUrl(uri)) {
-                                await launchUrl(uri,
-                                    mode: LaunchMode.externalApplication);
-                              }
-                            },
-                          ),
-                        if (loc.hours.isNotEmpty) ...[
-                          ListTile(
-                            contentPadding: EdgeInsets.zero,
-                            leading: const Icon(Icons.access_time,
-                                color: Colors.blue),
-                            title: Row(
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  loc.openStatus ?? 'Hours',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: (loc.openStatus ?? '')
-                                            .toLowerCase()
-                                            .contains('open')
-                                        ? Colors.green
-                                        : Colors.orange,
-                                    fontWeight: FontWeight.w600,
+                                const Icon(
+                                  Icons.place,
+                                  size: 20,
+                                  color: Color(0xFF2563EB),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Material(
+                                    color: Colors.transparent,
+                                    child: InkWell(
+                                      onTap: _openAddress,
+                                      borderRadius: BorderRadius.circular(4),
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 4,
+                                        ),
+                                        child: Text(
+                                          loc.address,
+                                          style: const TextStyle(
+                                            fontSize: 14,
+                                            color: Color(0xFF334155),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
                                   ),
                                 ),
-                                if (loc.closeTime != null &&
-                                    loc.closeTime!.isNotEmpty) ...[
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    '· Closes ${loc.closeTime}',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey.shade600,
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                            if (loc.hours.isNotEmpty) ...[
+                              Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  onTap: () {
+                                    setState(() {
+                                      _isHoursExpanded = !_isHoursExpanded;
+                                    });
+                                  },
+                                  borderRadius: BorderRadius.circular(4),
+                                  child: Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      const Icon(
+                                        Icons.access_time,
+                                        size: 20,
+                                        color: Color(0xFF2563EB),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Row(
+                                          children: [
+                                            Expanded(
+                                              child: Wrap(
+                                                spacing: 8,
+                                                crossAxisAlignment:
+                                                    WrapCrossAlignment.center,
+                                                children: [
+                                                  Text(
+                                                    loc.openStatus ??
+                                                        'Hours not available',
+                                                    style: TextStyle(
+                                                      fontSize: 14,
+                                                      fontWeight:
+                                                          FontWeight.w500,
+                                                      color: (loc.openStatus ??
+                                                                  '')
+                                                              .toLowerCase()
+                                                              .contains('open')
+                                                          ? const Color(
+                                                              0xFF16A34A)
+                                                          : (loc.openStatus ??
+                                                                      '')
+                                                                  .toLowerCase()
+                                                                  .contains(
+                                                                      'closed')
+                                                              ? const Color(
+                                                                  0xFFEF4444)
+                                                              : const Color(
+                                                                  0xFFF97316),
+                                                    ),
+                                                  ),
+                                                  if (loc.closeTime != null &&
+                                                      loc.closeTime!
+                                                          .isNotEmpty)
+                                                    Text(
+                                                      '⋅ Closes ${loc.closeTime}',
+                                                      style: const TextStyle(
+                                                        fontSize: 14,
+                                                        color:
+                                                            Color(0xFF64748B),
+                                                      ),
+                                                    ),
+                                                ],
+                                              ),
+                                            ),
+                                            Icon(
+                                              _isHoursExpanded
+                                                  ? Icons.keyboard_arrow_up
+                                                  : Icons.keyboard_arrow_down,
+                                              size: 16,
+                                              color: const Color(0xFF94A3B8),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              if (_isHoursExpanded)
+                                Padding(
+                                  padding: const EdgeInsets.only(
+                                    left: 32,
+                                    top: 4,
+                                    bottom: 4,
+                                  ),
+                                  child: Column(
+                                    children: loc.hours.map((h) {
+                                      final currentDay = DateFormat('EEEE').format(DateTime.now());
+                                      final isToday = currentDay == h.day;
+                                      return Padding(
+                                        padding: const EdgeInsets.only(
+                                          bottom: 6,
+                                        ),
+                                        child: Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            SizedBox(
+                                              width: 112,
+                                              child: Text(
+                                                h.day,
+                                                style: TextStyle(
+                                                  fontSize: 14,
+                                                  fontWeight: isToday
+                                                      ? FontWeight.w600
+                                                      : FontWeight.w400,
+                                                  color: isToday
+                                                      ? const Color(0xFF0F172A)
+                                                      : const Color(0xFF475569),
+                                                ),
+                                              ),
+                                            ),
+                                            Text(
+                                              h.time,
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                                fontWeight: isToday
+                                                    ? FontWeight.w600
+                                                    : FontWeight.w400,
+                                                color: isToday
+                                                    ? const Color(0xFF0F172A)
+                                                    : const Color(0xFF475569),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    }).toList(),
+                                  ),
+                                ),
+                              const SizedBox(height: 16),
+                            ],
+                            if (loc.website != null &&
+                                loc.website!.isNotEmpty) ...[
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Icon(
+                                    Icons.language,
+                                    size: 20,
+                                    color: Color(0xFF2563EB),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Material(
+                                      color: Colors.transparent,
+                                      child: InkWell(
+                                        onTap: () async {
+                                          final uri = Uri.parse(loc.website!);
+                                          if (await canLaunchUrl(uri)) {
+                                            await launchUrl(uri,
+                                                mode: LaunchMode
+                                                    .externalApplication);
+                                          }
+                                        },
+                                        borderRadius: BorderRadius.circular(4),
+                                        child: Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                            vertical: 4,
+                                          ),
+                                          child: Text(
+                                            loc.website!,
+                                            style: const TextStyle(
+                                              fontSize: 14,
+                                              color: Color(0xFF334155),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
                                     ),
                                   ),
                                 ],
-                              ],
-                            ),
-                            trailing: IconButton(
-                              icon: Icon(
-                                _isHoursExpanded
-                                    ? Icons.keyboard_arrow_up
-                                    : Icons.keyboard_arrow_down,
                               ),
-                              onPressed: () {
-                                setState(() {
-                                  _isHoursExpanded = !_isHoursExpanded;
-                                });
-                              },
-                            ),
-                          ),
-                          if (_isHoursExpanded)
-                            Padding(
-                              padding: const EdgeInsets.only(left: 40),
-                              child: Column(
-                                children: loc.hours
-                                    .map(
-                                      (h) => Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          Text(
-                                            h.day,
-                                            style: const TextStyle(
-                                                fontSize: 13),
+                              const SizedBox(height: 16),
+                            ],
+                            if (loc.phone != null && loc.phone!.isNotEmpty) ...[
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Icon(
+                                    Icons.phone,
+                                    size: 20,
+                                    color: Color(0xFF2563EB),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Material(
+                                      color: Colors.transparent,
+                                      child: InkWell(
+                                        onTap: () async {
+                                          final uri =
+                                              Uri(scheme: 'tel', path: loc.phone);
+                                          if (await canLaunchUrl(uri)) {
+                                            await launchUrl(uri);
+                                          }
+                                        },
+                                        borderRadius: BorderRadius.circular(4),
+                                        child: Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                            vertical: 4,
                                           ),
-                                          Text(
-                                            h.time,
+                                          child: Text(
+                                            loc.phone!,
                                             style: const TextStyle(
-                                                fontSize: 13),
+                                              fontSize: 14,
+                                              color: Color(0xFF334155),
+                                            ),
                                           ),
-                                        ],
+                                        ),
                                       ),
-                                    )
-                                    .toList(),
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ),
-                        ],
-                        const SizedBox(height: 16),
+                              const SizedBox(height: 16),
+                            ],
+                          ],
+                        ),
+                        const SizedBox(height: 24),
                       ],
                     ),
                   ),
