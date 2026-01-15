@@ -5,11 +5,11 @@ import '../providers/saved_locations_provider.dart';
 import '../services/storage_service.dart';
 import '../services/user_profile_service.dart';
 import '../models/user_model.dart';
-import '../services/location_data_service.dart';
+import '../services/locations_service.dart';
+import '../models/location_details.dart';
 import '../widgets/location_detail_sheet.dart';
 import '../widgets/user_name_editor.dart';
 import '../services/location_awareness_service.dart';
-import '../utils/locations_initializer.dart';
 
 
 class ProfilePage extends StatefulWidget {
@@ -22,6 +22,7 @@ class ProfilePage extends StatefulWidget {
 class _ProfilePageState extends State<ProfilePage> {
   final StorageService _storageService = StorageService();
   final UserProfileService _userProfileService = UserProfileService();
+  final LocationsService _locationsService = LocationsService();
   UserModel? _userProfile;
   bool _isLoading = true;
   bool _isUploadingPhoto = false;
@@ -30,9 +31,6 @@ class _ProfilePageState extends State<ProfilePage> {
   Map<String, dynamic>? _currentLocation;
   bool _isLoadingLocation = false;
   String? _locationError;
-
-  // Location upload state
-  bool _isUploadingLocations = false;
 
   @override
   void initState() {
@@ -190,24 +188,71 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  void _openLocationFromProfile(String locationId) {
-    final location =
-        LocationDataService.instance.getLocationById(locationId);
-
-    if (location == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Location details not found')),
-      );
+  Future<void> _openLocationFromProfile(String locationId) async {
+    // Always fetch from Firebase
+    LocationDetails? location;
+    try {
+      final locationData = await _locationsService.getLocationById(locationId);
+      if (locationData != null) {
+        location = _convertMapToLocationDetails(locationData);
+      }
+    } catch (e) {
+      debugPrint('Error fetching location from Firebase: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading location: $e')),
+        );
+      }
       return;
     }
 
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => LocationDetailSheet(
-        location: location,
-      ),
+    if (location == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Location details not found')),
+        );
+      }
+      return;
+    }
+
+    if (mounted) {
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (context) => LocationDetailSheet(
+          location: location!,
+        ),
+      );
+    }
+  }
+
+  LocationDetails _convertMapToLocationDetails(Map<String, dynamic> data) {
+    // Convert hours array from Firebase format to DayHours objects
+    List<DayHours> hours = [];
+    if (data['hours'] != null && data['hours'] is List) {
+      hours = (data['hours'] as List).map((hour) {
+        return DayHours(
+          day: hour['day'] as String? ?? '',
+          time: hour['time'] as String? ?? '',
+        );
+      }).toList();
+    }
+
+    return LocationDetails(
+      id: data['id'] as String? ?? '',
+      name: data['name'] as String? ?? 'Unknown Location',
+      rating: (data['rating'] as num?)?.toDouble() ?? 0.0,
+      reviews: data['reviews'] as String? ?? '0',
+      price: data['price'] as String?,
+      category: data['category'] as String? ?? 'Location',
+      address: data['address'] as String? ?? '',
+      openStatus: data['openStatus'] as String?,
+      closeTime: data['closeTime'] as String?,
+      phone: data['phone'] as String?,
+      website: data['website'] as String?,
+      description: data['description'] as String? ?? '',
+      hours: hours,
     );
   }
 
@@ -237,43 +282,6 @@ class _ProfilePageState extends State<ProfilePage> {
             backgroundColor: Colors.red,
           ),
         );
-      }
-    }
-  }
-
-  Future<void> _uploadLocationsToFirebase() async {
-    setState(() {
-      _isUploadingLocations = true;
-    });
-
-    try {
-      final locationsInitializer = LocationsInitializer();
-      final count = await locationsInitializer.initializeLocations();
-      
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Successfully uploaded $count locations to Firebase!'),
-            backgroundColor: Colors.green,
-            duration: const Duration(seconds: 3),
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error uploading locations: $e'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 5),
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isUploadingLocations = false;
-        });
       }
     }
   }
@@ -552,42 +560,6 @@ class _ProfilePageState extends State<ProfilePage> {
                               );
                             }
                           },
-                        ),
-                        const SizedBox(height: 40),
-                        // Developer/Admin Section - Upload Locations
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: Text(
-                            'Developer Tools',
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton.icon(
-                            onPressed: _isUploadingLocations ? null : _uploadLocationsToFirebase,
-                            icon: _isUploadingLocations
-                                ? const SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: Colors.white,
-                                    ),
-                                  )
-                                : const Icon(Icons.cloud_upload),
-                            label: Text(_isUploadingLocations 
-                                ? 'Uploading locations...' 
-                                : 'Upload Locations to Firebase'),
-                            style: ElevatedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              backgroundColor: Colors.orange,
-                              foregroundColor: Colors.white,
-                            ),
-                          ),
                         ),
                       ],
                     ),

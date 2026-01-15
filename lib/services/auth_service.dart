@@ -38,6 +38,13 @@ class AuthService {
     return _userFromFirebase(credential.user);
   }
 
+  Future<void> sendEmailVerification() async {
+    final user = _firebaseAuth.currentUser;
+    if (user != null && !user.emailVerified) {
+      await user.sendEmailVerification();
+    }
+  }
+
   Future<void> signOut() async {
     await _firebaseAuth.signOut();
   }

@@ -45,7 +45,10 @@ class AuthProvider with ChangeNotifier {
     _isLoading = true;
     notifyListeners();
     try {
+      // Create user account
       await _authService.createUserWithEmailAndPassword(email, password);
+      // Send email verification
+      await _authService.sendEmailVerification();
     } catch (e) {
       rethrow;
     } finally {

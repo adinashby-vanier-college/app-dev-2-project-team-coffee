@@ -30,12 +30,23 @@ class _LandingPageState extends State<LandingPage> {
     try {
       if (_isLogin) {
         await context.read<AuthProvider>().signIn(email, password);
+        if (mounted) {
+          Navigator.pushReplacementNamed(context, '/home');
+        }
       } else {
         await context.read<AuthProvider>().signUp(email, password);
-      }
-      
-      if (mounted) {
-        Navigator.pushReplacementNamed(context, '/home');
+        if (mounted) {
+          // Show success message with email verification info
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Account created! Please check your email to verify your account.'),
+              duration: Duration(seconds: 5),
+              backgroundColor: Colors.green,
+            ),
+          );
+          // Navigate to home after sign up (user can verify email later)
+          Navigator.pushReplacementNamed(context, '/home');
+        }
       }
     } catch (e) {
       if (mounted) {
