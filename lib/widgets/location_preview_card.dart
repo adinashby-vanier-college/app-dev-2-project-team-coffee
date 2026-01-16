@@ -3,20 +3,21 @@ import 'package:flutter/material.dart';
 class LocationPreviewCard extends StatelessWidget {
   final String locationId;
   final String? name;
-  final String? address;
+  final String? description;
   final VoidCallback onTap;
 
   const LocationPreviewCard({
     super.key,
     required this.locationId,
     this.name,
-    this.address,
+    this.description,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     final displayTitle = name ?? locationId;
+    final displayDescription = description ?? 'Tap to view details on the map';
 
     return InkWell(
       onTap: onTap,
@@ -66,7 +67,7 @@ class LocationPreviewCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    address ?? 'Tap to view details on the map',
+                    displayDescription,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(

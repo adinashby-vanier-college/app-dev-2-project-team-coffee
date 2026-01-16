@@ -27,6 +27,8 @@ class _ProfilePageState extends State<ProfilePage> {
   UserModel? _userProfile;
   bool _isLoading = true;
   bool _isUploadingPhoto = false;
+  Map<String, Map<String, dynamic>?> _locationDetailsCache = {};
+  bool _isLoadingLocations = false;
 
   @override
   void initState() {
@@ -57,6 +59,43 @@ class _ProfilePageState extends State<ProfilePage> {
           SnackBar(content: Text('Error loading profile: $e')),
         );
       }
+    }
+  }
+
+  Future<void> _loadLocationDetails(List<String> locationIds) async {
+    if (locationIds.isEmpty) {
+      setState(() {
+        _locationDetailsCache = {};
+        _isLoadingLocations = false;
+      });
+      return;
+    }
+
+    setState(() => _isLoadingLocations = true);
+
+    final Map<String, Map<String, dynamic>?> newCache = {};
+    
+    // Fetch location details for all IDs in parallel
+    final futures = locationIds.map((id) async {
+      try {
+        final details = await _locationsService.getLocationById(id);
+        return MapEntry(id, details);
+      } catch (e) {
+        debugPrint('Error loading location $id: $e');
+        return MapEntry(id, null);
+      }
+    });
+
+    final results = await Future.wait(futures);
+    for (final entry in results) {
+      newCache[entry.key] = entry.value;
+    }
+
+    if (mounted) {
+      setState(() {
+        _locationDetailsCache = newCache;
+        _isLoadingLocations = false;
+      });
     }
   }
 
@@ -559,6 +598,19 @@ class _ProfilePageState extends State<ProfilePage> {
                                 ),
                               );
                             } else {
+                              // Load location details when the list changes
+                              WidgetsBinding.instance.addPostFrameCallback((_) {
+                                final currentIds = provider.savedLocationIds.toList()..sort();
+                                final cachedIds = _locationDetailsCache.keys.toList()..sort();
+                                if (currentIds.join(',') != cachedIds.join(',')) {
+                                  _loadLocationDetails(provider.savedLocationIds);
+                                }
+                              });
+
+                              if (_isLoadingLocations) {
+                                return const Center(child: CircularProgressIndicator());
+                              }
+
                               return ListView.separated(
                                 shrinkWrap: true,
                                 physics: const NeverScrollableScrollPhysics(),
@@ -566,8 +618,14 @@ class _ProfilePageState extends State<ProfilePage> {
                                 separatorBuilder: (_, __) => const SizedBox(height: 8),
                                 itemBuilder: (context, index) {
                                   final locationId = provider.savedLocationIds[index];
-                              return LocationPreviewCard(
+                                  final locationData = _locationDetailsCache[locationId];
+                                  final locationName = locationData?['name'] as String?;
+                                  final locationDescription = locationData?['description'] as String?;
+                                  
+                                  return LocationPreviewCard(
                                     locationId: locationId,
+                                    name: locationName,
+                                    description: locationDescription,
                                     onTap: () => _openLocationFromProfile(locationId),
                                   );
                                 },

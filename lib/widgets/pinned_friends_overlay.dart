@@ -11,16 +11,46 @@ class PinnedFriendsOverlay extends StatelessWidget {
   const PinnedFriendsOverlay({super.key});
 
   String _getInitials(UserModel user) {
-    final displayName = user.displayName ?? user.name ?? user.email ?? '';
-    if (displayName.isEmpty) {
+    // Use email to generate initials
+    final email = user.email ?? '';
+    if (email.isEmpty) {
       return '?';
     }
-    final trimmed = displayName.trim();
-    final parts = trimmed.split(' ');
-    if (parts.length >= 2) {
-      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+    
+    // Extract the part before @
+    final emailParts = email.split('@');
+    if (emailParts.isEmpty || emailParts[0].isEmpty) {
+      return '?';
     }
-    return trimmed[0].toUpperCase();
+    
+    final localPart = emailParts[0].trim();
+    
+    // Check if email has dots (e.g., john.doe@example.com)
+    if (localPart.contains('.')) {
+      final nameParts = localPart.split('.');
+      // Filter out empty parts
+      final validParts = nameParts.where((part) => part.isNotEmpty).toList();
+      
+      if (validParts.length >= 2) {
+        // Use first letter of first two parts
+        return '${validParts[0][0]}${validParts[1][0]}'.toUpperCase();
+      } else if (validParts.isNotEmpty) {
+        // Single part with dots, use first two letters
+        final firstPart = validParts[0];
+        if (firstPart.length >= 2) {
+          return firstPart.substring(0, 2).toUpperCase();
+        }
+        return firstPart[0].toUpperCase();
+      }
+    }
+    
+    // No dots, use first two letters of the email prefix
+    if (localPart.length >= 2) {
+      return localPart.substring(0, 2).toUpperCase();
+    }
+    
+    // Single character
+    return localPart[0].toUpperCase();
   }
 
   @override

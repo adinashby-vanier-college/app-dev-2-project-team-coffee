@@ -2,6 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import '../models/user_model.dart';
+import 'notification_service.dart';
+import 'user_profile_service.dart';
 
 enum FriendRequestStatus {
   pending,
@@ -41,6 +43,8 @@ class FriendRequest {
 class FriendsService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  final NotificationService _notificationService = NotificationService();
+  final UserProfileService _userProfileService = UserProfileService();
 
   /// Sends a friend request from the current user to another user.
   Future<void> sendFriendRequest(String toUid) async {
@@ -111,6 +115,29 @@ class FriendsService {
       'status': 'pending',
       'createdAt': FieldValue.serverTimestamp(),
     });
+    
+    // Create notification for the recipient
+    try {
+      final senderProfile = await _userProfileService.getUserByUid(currentUser.uid);
+      final senderName = senderProfile?.name ?? 
+                        senderProfile?.displayName ?? 
+                        senderProfile?.email?.split('@').first ?? 
+                        'Someone';
+      
+      await _notificationService.storeNotificationForUser(
+        toUid,
+        'New Friend Request',
+        '$senderName sent you a friend request',
+        type: 'friend_request',
+        data: {
+          'fromUid': currentUser.uid,
+        },
+      );
+      debugPrint('FriendsService: Created notification for friend request recipient $toUid');
+    } catch (e) {
+      debugPrint('FriendsService: Error creating notification for friend request: $e');
+      // Don't fail the friend request if notification creation fails
+    }
   }
 
   /// Accepts a friend request.

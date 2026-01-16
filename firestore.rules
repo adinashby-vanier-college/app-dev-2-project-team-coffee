@@ -44,6 +44,15 @@ service cloud.firestore {
         // Users can create notifications for themselves (system-generated)
         allow create: if isOwner(userId);
         
+        // Allow authenticated users to create notifications for others
+        // This enables notifications to be created when messages/moments/friend requests are sent
+        // Validation: must be authenticated, notification must have valid type and data
+        allow create: if isAuthenticated() &&
+          request.resource.data.type is string &&
+          request.resource.data.title is string &&
+          request.resource.data.body is string &&
+          request.resource.data.isRead == false;
+        
         // Users can update their own notifications (mark as read)
         allow update: if isOwner(userId) &&
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']);

@@ -4,10 +4,14 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../models/moment_model.dart';
+import 'notification_service.dart';
+import 'user_profile_service.dart';
 
 class MomentsService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  final NotificationService _notificationService = NotificationService();
+  final UserProfileService _userProfileService = UserProfileService();
   static const String collectionName = 'moments';
 
   /// Generates a unique share code
@@ -389,6 +393,35 @@ class MomentsService {
     });
 
     debugPrint('MomentsService: Successfully invited ${friendIds.length} friends to moment $momentId');
+    
+    // Create notifications for each invited friend
+    final moment = await getMomentById(momentId);
+    if (moment != null) {
+      final creatorProfile = await _userProfileService.getUserByUid(moment.createdBy);
+      final creatorName = creatorProfile?.name ?? 
+                         creatorProfile?.displayName ?? 
+                         creatorProfile?.email?.split('@').first ?? 
+                         'Someone';
+      
+      for (final friendId in friendIds) {
+        try {
+          await _notificationService.storeNotificationForUser(
+            friendId,
+            'New Moment Invite',
+            '$creatorName invited you to "${moment.title}"',
+            type: 'moment_invite',
+            data: {
+              'momentId': momentId,
+              'creatorId': moment.createdBy,
+            },
+          );
+          debugPrint('MomentsService: Created notification for friend $friendId');
+        } catch (e) {
+          debugPrint('MomentsService: Error creating notification for friend $friendId: $e');
+          // Don't fail the invite if notification creation fails
+        }
+      }
+    }
     
     // Verify the update
     try {

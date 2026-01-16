@@ -4,10 +4,14 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import '../models/message_model.dart';
 import '../models/conversation_model.dart';
+import 'notification_service.dart';
+import 'user_profile_service.dart';
 
 class ChatService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  final NotificationService _notificationService = NotificationService();
+  final UserProfileService _userProfileService = UserProfileService();
 
   /// Creates or gets an existing conversation between two users
   Future<String> getOrCreateConversation(String otherUserId) async {
@@ -112,6 +116,8 @@ class ChatService {
     debugPrint('ChatService.sendMessage: Sender: ${currentUser.uid}');
 
     // Verify conversation exists and user is a participant
+    // Store participants in a variable accessible throughout the function
+    List<String> participants = [];
     try {
       final conversationDoc = await _firestore
           .collection('conversations')
@@ -129,7 +135,7 @@ class ChatService {
         throw Exception('Conversation has no data');
       }
 
-      final participants = List<String>.from(conversationData['participants'] ?? []);
+      participants = List<String>.from(conversationData['participants'] ?? []);
       if (!participants.contains(currentUser.uid)) {
         debugPrint('ChatService.sendMessage: User ${currentUser.uid} is not a participant in conversation $conversationId');
         debugPrint('ChatService.sendMessage: Participants: $participants');
@@ -193,6 +199,54 @@ class ChatService {
       debugPrint('ChatService.sendMessage: ✅✅✅ Batch.commit() returned successfully!');
       debugPrint('ChatService.sendMessage: Message ID: ${messageRef.id}');
       debugPrint('ChatService.sendMessage: Message path: ${messageRef.path}');
+      
+      // Create notification for the recipient(s)
+      final otherParticipants = participants.where((uid) => uid != currentUser.uid).toList();
+      
+      for (final recipientId in otherParticipants) {
+        try {
+          // Get sender name for notification
+          final senderProfile = await _userProfileService.getUserByUid(currentUser.uid);
+          final senderName = senderProfile?.name ?? 
+                            senderProfile?.displayName ?? 
+                            senderProfile?.email?.split('@').first ?? 
+                            'Someone';
+          
+          String notificationTitle;
+          String notificationBody;
+          
+          if (momentId != null) {
+            notificationTitle = 'New Moment Shared';
+            notificationBody = '$senderName shared a moment with you';
+          } else if (locationId != null) {
+            notificationTitle = 'New Scene Shared';
+            notificationBody = '$senderName sent you a scene';
+          } else {
+            notificationTitle = 'New Message';
+            final messagePreview = messageText.length > 50 
+                ? '${messageText.substring(0, 50)}...' 
+                : messageText;
+            notificationBody = '$senderName: $messagePreview';
+          }
+          
+          await _notificationService.storeNotificationForUser(
+            recipientId,
+            notificationTitle,
+            notificationBody,
+            type: 'message',
+            data: {
+              'conversationId': conversationId,
+              'senderId': currentUser.uid,
+              if (locationId != null) 'locationId': locationId,
+              if (momentId != null) 'momentId': momentId,
+            },
+          );
+          debugPrint('ChatService.sendMessage: Created notification for recipient $recipientId');
+        } catch (e) {
+          debugPrint('ChatService.sendMessage: Error creating notification for $recipientId: $e');
+          // Don't fail the message send if notification creation fails
+        }
+      }
       
       // Wait a moment for Firestore to propagate
       await Future.delayed(const Duration(milliseconds: 500));

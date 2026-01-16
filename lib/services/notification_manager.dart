@@ -149,62 +149,12 @@ class NotificationManager extends ChangeNotifier {
             return;
           }
 
-          // Get sender name
-          String senderName = 'Someone';
-          try {
-            final senderProfile = await _userProfileService.getUserByUid(senderId);
-            senderName = senderProfile?.name ?? 
-                        senderProfile?.displayName ?? 
-                        senderProfile?.email?.split('@').first ?? 
-                        'Someone';
-          } catch (e) {
-            debugPrint('NotificationManager: Error getting sender profile: $e');
-          }
-
-          final text = messageData['text'] as String? ?? '';
-          final locationId = messageData['locationId'] as String?;
-          final momentId = messageData['momentId'] as String?;
-
-          // Create notification based on message type
-          if (momentId != null) {
-            // Moment shared
-            await _notificationService.showNotification(
-              'New Moment Shared',
-              '$senderName shared a moment with you',
-              type: 'message',
-              data: {
-                'conversationId': conversationId,
-                'momentId': momentId,
-                'senderId': senderId,
-              },
-            );
-          } else if (locationId != null) {
-            // Scene/location shared
-            await _notificationService.showNotification(
-              'New Scene Shared',
-              '$senderName sent you a scene',
-              type: 'message',
-              data: {
-                'conversationId': conversationId,
-                'locationId': locationId,
-                'senderId': senderId,
-              },
-            );
-          } else {
-            // Regular text message
-            await _notificationService.showNotification(
-              'New Message',
-              '$senderName: ${text.length > 50 ? text.substring(0, 50) + "..." : text}',
-              type: 'message',
-              data: {
-                'conversationId': conversationId,
-                'senderId': senderId,
-              },
-            );
-          }
-
+          // NOTE: Message notifications are now handled directly in ChatService.sendMessage()
+          // to ensure they are created for recipients only, not senders.
+          // We skip creating notifications here to avoid duplicates.
+          // Just mark the message as known so we don't process it again.
           _knownMessageIds.add(messageId);
-          debugPrint('NotificationManager: Created notification for message $messageId');
+          debugPrint('NotificationManager: Skipping notification for message $messageId (handled by ChatService)');
         });
         
         _messageSubscriptions[conversationId] = subscription;

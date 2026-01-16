@@ -82,7 +82,7 @@ class _LocationDetailSheetState extends State<LocationDetailSheet> {
             Icon(
               isSaved ? Icons.bookmark : Icons.bookmark_border,
               size: 20,
-              color: borderColor,
+              color: textColor,
             ),
             const SizedBox(height: 4),
             Text(

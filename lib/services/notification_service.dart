@@ -109,6 +109,46 @@ class NotificationService {
     }
   }
 
+  /// Stores a notification in Firestore for a specific user (can be different from current user)
+  /// This is used when creating notifications for recipients (messages, moments, friend requests)
+  Future<void> storeNotificationForUser(
+    String recipientUserId,
+    String title,
+    String body, {
+    String type = 'general',
+    Map<String, dynamic>? data,
+  }) async {
+    final currentUser = _auth.currentUser;
+    if (currentUser == null) {
+      debugPrint('NotificationService: Cannot store notification - no user');
+      return;
+    }
+
+    debugPrint('NotificationService: Storing notification for user $recipientUserId - title: $title, type: $type');
+
+    final notification = NotificationModel(
+      id: '', // Will be set by Firestore
+      title: title,
+      body: body,
+      type: type,
+      createdAt: DateTime.now(),
+      isRead: false,
+      data: data,
+    );
+
+    try {
+      final docRef = await _firestore
+          .collection('users')
+          .doc(recipientUserId)
+          .collection('notifications')
+          .add(notification.toFirestore());
+      debugPrint('NotificationService: Successfully stored notification with id: ${docRef.id} for user $recipientUserId');
+    } catch (e) {
+      debugPrint('NotificationService: Error storing notification for user $recipientUserId: $e');
+      rethrow;
+    }
+  }
+
   /// Gets all notifications for the current user
   Stream<List<NotificationModel>> getNotificationsStream() {
     final user = _auth.currentUser;

@@ -341,7 +341,7 @@ class _LocationMessageBubbleState extends State<_LocationMessageBubble> {
         LocationPreviewCard(
           locationId: widget.locationId,
           name: _locationData?['name'],
-          address: _locationData?['address'],
+          description: _locationData?['description'],
           onTap: () => _openLocation(context),
         ),
         const SizedBox(height: 4),
