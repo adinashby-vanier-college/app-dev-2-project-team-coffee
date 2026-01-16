@@ -97,7 +97,7 @@ class PinnedFriendsOverlay extends StatelessWidget {
 
             return Positioned(
               left: 16,
-              bottom: 80, // Above the bottom navigation bar
+              bottom: 96, // Align start height with zoom controls
               child: SizedBox(
                 // Calculate total height: (avatar size * count) + (spacing * (count - 1))
                 height: (totalAvatarSize * pinnedFriends.length) + 
