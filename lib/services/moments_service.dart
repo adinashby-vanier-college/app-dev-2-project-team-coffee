@@ -13,6 +13,16 @@ class MomentsService {
   final NotificationService _notificationService = NotificationService();
   final UserProfileService _userProfileService = UserProfileService();
   static const String collectionName = 'moments';
+  
+  // Cache streams per user to avoid recreating them on tab switches
+  StreamController<List<MomentModel>>? _cachedMyMomentsController;
+  StreamController<List<MomentModel>>? _cachedInvitedMomentsController;
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _cachedMyMomentsSubscription;
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _cachedInvitedFriendsSubscription;
+  StreamSubscription<List<MomentModel>>? _cachedInvitedCombinedSubscription;
+  List<MomentModel>? _cachedMyMomentsLatest;
+  List<MomentModel>? _cachedInvitedMomentsLatest;
+  String? _cachedUserId;
 
   /// Generates a unique share code
   String _generateShareCode() {
@@ -67,19 +77,77 @@ class MomentsService {
   Stream<List<MomentModel>> getMyMomentsStream() {
     final user = _auth.currentUser;
     if (user == null) {
+      _cleanupCachedStreams();
       return Stream.value([]);
     }
 
-    return _firestore
+    // Return cached stream if user hasn't changed
+    if (_cachedMyMomentsController != null && _cachedUserId == user.uid) {
+      return _cachedMyMomentsController!.stream;
+    }
+
+    // Cleanup old streams if user changed
+    if (_cachedUserId != null && _cachedUserId != user.uid) {
+      _cleanupCachedStreams();
+    }
+
+    // Create new stream controller and cache it
+    _cachedUserId = user.uid;
+    _cachedMyMomentsController = StreamController<List<MomentModel>>.broadcast();
+    _cachedMyMomentsController!.onListen = () {
+      if (_cachedMyMomentsLatest != null && !_cachedMyMomentsController!.isClosed) {
+        _cachedMyMomentsController!.add(_cachedMyMomentsLatest!);
+      }
+    };
+    
+    _cachedMyMomentsSubscription = _firestore
         .collection(collectionName)
         .where('createdBy', isEqualTo: user.uid)
         .orderBy('dateTime', descending: false)
         .snapshots()
-        .map((snapshot) {
-      return snapshot.docs
-          .map((doc) => MomentModel.fromFirestore(doc.data(), doc.id))
-          .toList();
-    });
+        .listen(
+      (snapshot) {
+        if (_cachedMyMomentsController != null && !_cachedMyMomentsController!.isClosed) {
+          try {
+            final moments = snapshot.docs
+                .map((doc) => MomentModel.fromFirestore(doc.data(), doc.id))
+                .toList();
+            _cachedMyMomentsLatest = moments;
+            _cachedMyMomentsController!.add(moments);
+          } catch (e) {
+            debugPrint('MomentsService: Error mapping myMoments stream: $e');
+            _cachedMyMomentsController!.add(<MomentModel>[]);
+          }
+        }
+      },
+      onError: (error) {
+        debugPrint('MomentsService: Error in getMyMomentsStream: $error');
+        if (_cachedMyMomentsController != null && !_cachedMyMomentsController!.isClosed) {
+          _cachedMyMomentsController!.add(<MomentModel>[]);
+        }
+      },
+      cancelOnError: false,
+    );
+    
+    _cachedMyMomentsController!.onCancel = () {};
+    
+    return _cachedMyMomentsController!.stream;
+  }
+  
+  void _cleanupCachedStreams() {
+    _cachedMyMomentsSubscription?.cancel();
+    _cachedInvitedFriendsSubscription?.cancel();
+    _cachedInvitedCombinedSubscription?.cancel();
+    _cachedMyMomentsController?.close();
+    _cachedInvitedMomentsController?.close();
+    _cachedMyMomentsSubscription = null;
+    _cachedInvitedFriendsSubscription = null;
+    _cachedInvitedCombinedSubscription = null;
+    _cachedMyMomentsController = null;
+    _cachedInvitedMomentsController = null;
+    _cachedMyMomentsLatest = null;
+    _cachedInvitedMomentsLatest = null;
+    _cachedUserId = null;
   }
 
   /// Gets moments the current user is invited to
@@ -89,31 +157,93 @@ class MomentsService {
   Stream<List<MomentModel>> getInvitedMomentsStream() {
     final user = _auth.currentUser;
     if (user == null) {
+      _cleanupCachedStreams();
       return Stream.value([]);
     }
 
+    // Return cached stream if user hasn't changed
+    if (_cachedInvitedMomentsController != null && _cachedUserId == user.uid) {
+      return _cachedInvitedMomentsController!.stream;
+    }
+
+    // Cleanup old streams if user changed
+    if (_cachedUserId != null && _cachedUserId != user.uid) {
+      _cleanupCachedStreams();
+    }
+
+    // Create new streams and cache the combined result
+    _cachedUserId = user.uid;
+    
     // Stream 1: Moments from invitedFriends array
-    final invitedFriendsStream = _firestore
+    final invitedFriendsController = StreamController<List<MomentModel>>.broadcast();
+    
+    _cachedInvitedFriendsSubscription = _firestore
         .collection(collectionName)
         .where('invitedFriends', arrayContains: user.uid)
         .orderBy('dateTime', descending: false)
         .snapshots()
-        .map((snapshot) {
-      return snapshot.docs
-          .map((doc) => MomentModel.fromFirestore(doc.data(), doc.id))
-          .toList();
-    });
+        .listen(
+      (snapshot) {
+        if (invitedFriendsController.isClosed) return;
+        try {
+          final moments = snapshot.docs
+              .map((doc) => MomentModel.fromFirestore(doc.data(), doc.id))
+              .toList();
+          invitedFriendsController.add(moments);
+        } catch (e) {
+          debugPrint('MomentsService: Error mapping invitedFriends stream: $e');
+          invitedFriendsController.add(<MomentModel>[]);
+        }
+      },
+      onError: (error) {
+        debugPrint('MomentsService: Error in invitedFriendsStream: $error');
+        if (!invitedFriendsController.isClosed) {
+          invitedFriendsController.add(<MomentModel>[]);
+        }
+      },
+      cancelOnError: false,
+    );
+    
+    invitedFriendsController.onCancel = () {};
+    
+    final invitedFriendsStream = invitedFriendsController.stream;
 
     // Stream 2: Moments shared in chat messages
     final chatMomentsStream = _getMomentsFromChatMessages(user.uid);
 
-    // Combine both streams
-    return _combineStreams(invitedFriendsStream, chatMomentsStream);
+    // Combine both streams and cache the result
+    final combinedStream = _combineStreams(invitedFriendsStream, chatMomentsStream);
+    _cachedInvitedMomentsController = StreamController<List<MomentModel>>.broadcast();
+    _cachedInvitedMomentsController!.onListen = () {
+      if (_cachedInvitedMomentsLatest != null && !_cachedInvitedMomentsController!.isClosed) {
+        _cachedInvitedMomentsController!.add(_cachedInvitedMomentsLatest!);
+      }
+    };
+    
+    _cachedInvitedCombinedSubscription = combinedStream.listen(
+      (moments) {
+        if (_cachedInvitedMomentsController != null && !_cachedInvitedMomentsController!.isClosed) {
+          _cachedInvitedMomentsLatest = moments;
+          _cachedInvitedMomentsController!.add(moments);
+        }
+      },
+      onError: (error) {
+        debugPrint('MomentsService: Error in combined invited stream: $error');
+        if (_cachedInvitedMomentsController != null && !_cachedInvitedMomentsController!.isClosed) {
+          _cachedInvitedMomentsController!.add(<MomentModel>[]);
+        }
+      },
+      cancelOnError: false,
+    );
+    
+    _cachedInvitedMomentsController!.onCancel = () {};
+    
+    return _cachedInvitedMomentsController!.stream;
   }
 
   /// Gets moments that were shared with the user in chat messages
   Stream<List<MomentModel>> _getMomentsFromChatMessages(String userId) {
-    final controller = StreamController<List<MomentModel>>();
+    final controller = StreamController<List<MomentModel>>.broadcast();
     final subscriptions = <StreamSubscription>[];
     final momentIds = <String>{};
     bool isInitialized = false;
@@ -135,16 +265,36 @@ class MomentsService {
         debounceTimer?.cancel();
 
         if (conversationsSnapshot.docs.isEmpty) {
-          if (isInitialized) {
+          // No conversations, emit empty list and mark as initialized
+          isInitialized = true;
+          if (!controller.isClosed) {
             controller.add(<MomentModel>[]);
           }
-          isInitialized = true;
           return;
         }
 
         // Listen to messages in each conversation
+        final initializedListeners = <String>{}; // Track which conversation listeners have fired
+        final conversationMomentIds = <String, Set<String>>{}; // Track momentIds per conversation
+        bool hasSetUpListeners = false;
+        
+        void rebuildAndEmitMoments() {
+          // Rebuild complete set of momentIds from all conversations
+          final allMomentIds = <String>{};
+          for (var ids in conversationMomentIds.values) {
+            allMomentIds.addAll(ids);
+          }
+          
+          // Use debounce to avoid excessive fetches
+          debounceTimer?.cancel();
+          debounceTimer = Timer(const Duration(milliseconds: 300), () {
+            _fetchAndEmitMoments(allMomentIds, userId, controller);
+          });
+        }
+        
         for (var conversationDoc in conversationsSnapshot.docs) {
           final conversationId = conversationDoc.id;
+          conversationMomentIds[conversationId] = <String>{};
           
           final messagesSub = _firestore
               .collection('conversations')
@@ -153,7 +303,11 @@ class MomentsService {
               .snapshots()
               .listen(
             (messagesSnapshot) {
-              // Update momentIds from messages
+              // Mark this listener as initialized
+              initializedListeners.add(conversationId);
+              
+              // Update momentIds for this conversation
+              final thisConversationMoments = <String>{};
               for (var messageDoc in messagesSnapshot.docs) {
                 final messageData = messageDoc.data();
                 final senderId = messageData['senderId'] as String?;
@@ -161,30 +315,51 @@ class MomentsService {
 
                 // Only include moments sent TO the user (not by the user)
                 if (momentId != null && senderId != null && senderId != userId) {
-                  momentIds.add(momentId);
+                  thisConversationMoments.add(momentId);
                 }
               }
               
-              // Debounce to avoid multiple simultaneous fetches
-              debounceTimer?.cancel();
-              debounceTimer = Timer(const Duration(milliseconds: 300), () {
-                _fetchAndEmitMoments(momentIds, userId, controller);
-              });
+              // Update the momentIds for this conversation
+              conversationMomentIds[conversationId] = thisConversationMoments;
+              
+              // After all listeners have fired at least once, fetch and emit
+              if (!hasSetUpListeners && initializedListeners.length >= conversationsSnapshot.docs.length) {
+                hasSetUpListeners = true;
+                isInitialized = true;
+                rebuildAndEmitMoments();
+              } else if (hasSetUpListeners) {
+                // Subsequent updates
+                rebuildAndEmitMoments();
+              }
             },
             onError: (error) {
               debugPrint('MomentsService: Error in message stream for conversation $conversationId: $error');
+              // Mark as initialized even on error
+              initializedListeners.add(conversationId);
+              conversationMomentIds[conversationId] = <String>{}; // Empty set on error
+              // If this was the last listener and we haven't initialized yet, emit empty
+              if (!hasSetUpListeners && initializedListeners.length >= conversationsSnapshot.docs.length) {
+                hasSetUpListeners = true;
+                isInitialized = true;
+                rebuildAndEmitMoments();
+              } else if (hasSetUpListeners) {
+                rebuildAndEmitMoments();
+              }
             },
           );
           
           subscriptions.add(messagesSub);
         }
-        
-        isInitialized = true;
       },
       onError: (error) {
         debugPrint('MomentsService: Error in conversations stream: $error');
-        controller.addError(error);
+        // Instead of adding error, emit empty list and mark as initialized
+        isInitialized = true;
+        if (!controller.isClosed) {
+          controller.add(<MomentModel>[]);
+        }
       },
+      cancelOnError: false,
     );
 
     controller.onCancel = () {
@@ -210,6 +385,9 @@ class MomentsService {
     }
 
     // Fetch all moments by their IDs
+    // Include ALL moments shared in chat, even if user created them originally
+    // (e.g., if user sends moment to friend, friend sends it back - it should appear in Invited)
+    // Duplicates with "My Moments" are handled by the _combineStreams method which removes duplicates by ID
     final moments = <MomentModel>[];
     for (var momentId in momentIds) {
       try {
@@ -220,10 +398,8 @@ class MomentsService {
 
         if (momentDoc.exists) {
           final moment = MomentModel.fromFirestore(momentDoc.data()!, momentDoc.id);
-          // Only include if the user didn't create it (to avoid duplicates with "My Moments")
-          if (moment.createdBy != userId) {
-            moments.add(moment);
-          }
+          // Include all moments shared via chat, regardless of creator
+          moments.add(moment);
         }
       } catch (e) {
         debugPrint('MomentsService: Error fetching moment $momentId: $e');
@@ -241,34 +417,42 @@ class MomentsService {
     Stream<List<MomentModel>> stream1,
     Stream<List<MomentModel>> stream2,
   ) {
-    final controller = StreamController<List<MomentModel>>();
+    final controller = StreamController<List<MomentModel>>.broadcast();
     final latest1 = <MomentModel>[];
     final latest2 = <MomentModel>[];
     bool hasData1 = false;
     bool hasData2 = false;
+    bool hasEmitted = false;
 
     StreamSubscription? sub1;
     StreamSubscription? sub2;
 
     void emitCombined() {
+      // Always emit if we have data from at least one stream
+      // This ensures empty lists are also emitted, allowing StreamBuilder to resolve
       if (hasData1 || hasData2) {
         // Combine and remove duplicates by ID
         final combined = <String, MomentModel>{};
         
-        for (var moment in latest1) {
-          combined[moment.id] = moment;
+        if (hasData1) {
+          for (var moment in latest1) {
+            combined[moment.id] = moment;
+          }
         }
         
-        for (var moment in latest2) {
-          combined[moment.id] = moment;
+        if (hasData2) {
+          for (var moment in latest2) {
+            combined[moment.id] = moment;
+          }
         }
 
         final result = combined.values.toList();
         result.sort((a, b) => a.dateTime.compareTo(b.dateTime));
         controller.add(result);
+        hasEmitted = true;
       }
     }
-
+    
     sub1 = stream1.listen(
       (moments) {
         latest1.clear();
@@ -278,8 +462,15 @@ class MomentsService {
       },
       onError: (error) {
         debugPrint('MomentsService: Error in stream1: $error');
-        controller.addError(error);
+        // Emit empty list on error instead of passing error through
+        latest1.clear();
+        hasData1 = true;
+        emitCombined();
       },
+      onDone: () {
+        debugPrint('MomentsService: stream1 done');
+      },
+      cancelOnError: false, // Don't cancel subscription on error
     );
 
     sub2 = stream2.listen(
@@ -291,8 +482,15 @@ class MomentsService {
       },
       onError: (error) {
         debugPrint('MomentsService: Error in stream2: $error');
-        controller.addError(error);
+        // Emit empty list on error instead of passing error through
+        latest2.clear();
+        hasData2 = true;
+        emitCombined();
       },
+      onDone: () {
+        debugPrint('MomentsService: stream2 done');
+      },
+      cancelOnError: false, // Don't cancel subscription on error
     );
 
     controller.onCancel = () {

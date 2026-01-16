@@ -240,11 +240,9 @@ class _MomentsPageState extends State<MomentsPage> with SingleTickerProviderStat
   Widget _buildMomentsList(Stream<List<MomentModel>> stream, String emptyTitle, String emptySubtitle) {
     return StreamBuilder<List<MomentModel>>(
       stream: stream,
+      initialData: const <MomentModel>[], // Provide initial data so it never shows waiting state
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-
+        // No need to check connectionState.waiting since we have initialData
         if (snapshot.hasError) {
           return Center(
             child: Column(
