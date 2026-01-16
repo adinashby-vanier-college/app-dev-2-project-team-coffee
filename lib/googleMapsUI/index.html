@@ -754,7 +754,7 @@ const App = () => {
             </div>
 
             {searchQuery && searchResults.length > 0 && (
-               <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)', border: '1px solid #f1f5f9', overflow: 'hidden', marginTop: '8px', maxHeight: '60vh', overflowY: 'auto' }}>
+               <div style={{ backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)', border: '1px solid #f1f5f9', overflow: 'hidden', marginTop: '8px', maxHeight: 'calc(100vh - 360px)', overflowY: 'auto' }}>
                  {searchResults.map((loc) => (
                    <div 
                      key={loc.id} 
