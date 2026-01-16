@@ -2,16 +2,17 @@ import 'package:flutter/material.dart';
 
 
 class NavBar extends StatelessWidget {
-
   final int currentIndex;
-  
-
   final Function(int) onTap;
+  final Color? backgroundColor;
+  final double? elevation;
 
   const NavBar({
     super.key,
     required this.currentIndex,
     required this.onTap,
+    this.backgroundColor,
+    this.elevation,
   });
 
   @override
@@ -21,6 +22,8 @@ class NavBar extends StatelessWidget {
       currentIndex: currentIndex,
       onTap: onTap,
       type: BottomNavigationBarType.fixed,
+      backgroundColor: backgroundColor,
+      elevation: elevation,
       items: const [
         BottomNavigationBarItem(
           icon: Icon(Icons.home),

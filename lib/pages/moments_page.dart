@@ -323,6 +323,8 @@ class _MomentsPageState extends State<MomentsPage> with SingleTickerProviderStat
             ),
           );
         },
+        backgroundColor: const Color(0xFF00B030),
+        foregroundColor: Colors.white,
         icon: const Icon(Icons.add),
         label: const Text('New Moment'),
       ),

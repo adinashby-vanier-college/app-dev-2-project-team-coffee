@@ -29,7 +29,13 @@ class HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBody: true,
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
         actions: const [
           NotificationBell(),
           SizedBox(width: 8),
@@ -52,6 +58,8 @@ class HomePage extends StatelessWidget {
       bottomNavigationBar: NavBar(
         currentIndex: 0, // Home is at index 0
         onTap: (index) => _onNavBarTap(context, index),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
       ),
     );
   }
