@@ -374,6 +374,13 @@ class MomentsService {
 
   /// Invites friends to a moment
   Future<void> inviteFriends(String momentId, List<String> friendIds) async {
+    if (friendIds.isEmpty) {
+      debugPrint('MomentsService: No friends to invite for moment $momentId');
+      return;
+    }
+    
+    debugPrint('MomentsService: Inviting ${friendIds.length} friends to moment $momentId: $friendIds');
+    
     await _firestore
         .collection(collectionName)
         .doc(momentId)
@@ -381,7 +388,22 @@ class MomentsService {
       'invitedFriends': FieldValue.arrayUnion(friendIds),
     });
 
-    debugPrint('MomentsService: Invited ${friendIds.length} friends to moment $momentId');
+    debugPrint('MomentsService: Successfully invited ${friendIds.length} friends to moment $momentId');
+    
+    // Verify the update
+    try {
+      final updatedDoc = await _firestore
+          .collection(collectionName)
+          .doc(momentId)
+          .get();
+      if (updatedDoc.exists) {
+        final data = updatedDoc.data();
+        final invitedFriends = data?['invitedFriends'] as List<dynamic>? ?? [];
+        debugPrint('MomentsService: Moment $momentId now has ${invitedFriends.length} invited friends: $invitedFriends');
+      }
+    } catch (e) {
+      debugPrint('MomentsService: Error verifying invite update: $e');
+    }
   }
 
   /// Regenerates the share code for a moment

@@ -329,6 +329,59 @@ class FriendsService {
       return await getFriendProfiles(friendUids);
     });
   }
+
+  /// Removes a friend relationship between the current user and another user.
+  /// Removes both users from each other's friends list.
+  Future<void> unfriend(String friendUid) async {
+    final currentUser = _auth.currentUser;
+    if (currentUser == null) {
+      throw Exception('No authenticated user');
+    }
+
+    if (currentUser.uid == friendUid) {
+      throw Exception('Cannot unfriend yourself');
+    }
+
+    // Check if they are actually friends
+    final currentUserDoc = await _firestore
+        .collection('users')
+        .doc(currentUser.uid)
+        .get();
+    
+    if (!currentUserDoc.exists) {
+      throw Exception('Your profile is not set up. Please sign out and sign in again.');
+    }
+    
+    final friendsList = currentUserDoc.data()?['friends'] as List<dynamic>? ?? [];
+    if (!friendsList.contains(friendUid)) {
+      throw Exception('Not friends with this user');
+    }
+
+    // Use batch write to ensure atomicity
+    final batch = _firestore.batch();
+
+    // Remove from current user's friends list
+    batch.update(
+      _firestore.collection('users').doc(currentUser.uid),
+      {
+        'friends': FieldValue.arrayRemove([friendUid]),
+      },
+    );
+
+    // Remove current user from friend's friends list
+    batch.update(
+      _firestore.collection('users').doc(friendUid),
+      {
+        'friends': FieldValue.arrayRemove([currentUser.uid]),
+      },
+    );
+
+    try {
+      await batch.commit();
+    } catch (e) {
+      throw Exception('Failed to unfriend user: $e');
+    }
+  }
 }
 
 

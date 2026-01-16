@@ -1,6 +1,7 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import '../models/notification_model.dart';
 
 class NotificationService {
@@ -78,7 +79,12 @@ class NotificationService {
     Map<String, dynamic>? data,
   }) async {
     final user = _auth.currentUser;
-    if (user == null) return;
+    if (user == null) {
+      debugPrint('NotificationService: Cannot store notification - no user');
+      return;
+    }
+
+    debugPrint('NotificationService: Storing notification - title: $title, type: $type, user: ${user.uid}');
 
     final notification = NotificationModel(
       id: '', // Will be set by Firestore
@@ -90,20 +96,29 @@ class NotificationService {
       data: data,
     );
 
-    await _firestore
-        .collection('users')
-        .doc(user.uid)
-        .collection('notifications')
-        .add(notification.toFirestore());
+    try {
+      final docRef = await _firestore
+          .collection('users')
+          .doc(user.uid)
+          .collection('notifications')
+          .add(notification.toFirestore());
+      debugPrint('NotificationService: Successfully stored notification with id: ${docRef.id}');
+    } catch (e) {
+      debugPrint('NotificationService: Error storing notification: $e');
+      rethrow;
+    }
   }
 
   /// Gets all notifications for the current user
   Stream<List<NotificationModel>> getNotificationsStream() {
     final user = _auth.currentUser;
     if (user == null) {
+      debugPrint('NotificationService: getNotificationsStream - no user');
       return Stream.value([]);
     }
 
+    debugPrint('NotificationService: Setting up notifications stream for user ${user.uid}');
+    
     return _firestore
         .collection('users')
         .doc(user.uid)
@@ -112,9 +127,11 @@ class NotificationService {
         .limit(50)
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs
+      final notifications = snapshot.docs
           .map((doc) => NotificationModel.fromFirestore(doc.data(), doc.id))
           .toList();
+      debugPrint('NotificationService: Stream emitted ${notifications.length} notifications');
+      return notifications;
     });
   }
 

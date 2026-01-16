@@ -138,11 +138,19 @@ class _MomentDetailPageState extends State<MomentDetailPage> {
       // Collect friend IDs for batch invite
       final friendIds = selectedFriends.map((f) => f.uid).toList();
       
+      debugPrint('MomentDetailPage: Adding ${friendIds.length} friends to invitedFriends for moment ${_moment.id}');
+      
       // Add all selected friends to invitedFriends array
       try {
         await _momentsService.inviteFriends(_moment.id, friendIds);
+        debugPrint('MomentDetailPage: Successfully added friends to invitedFriends');
       } catch (e) {
-        debugPrint('Error adding friends to invitedFriends: $e');
+        debugPrint('MomentDetailPage: Error adding friends to invitedFriends: $e');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error inviting friends: $e')),
+          );
+        }
       }
 
       for (final friend in selectedFriends) {

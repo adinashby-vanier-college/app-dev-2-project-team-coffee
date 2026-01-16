@@ -12,6 +12,7 @@ import '../services/friends_service.dart';
 import '../services/chat_service.dart';
 import '../models/user_model.dart';
 import '../services/debug_service.dart';
+import 'pinned_friends_overlay.dart';
 
 class GoogleMapsUIWidget extends StatefulWidget {
   const GoogleMapsUIWidget({super.key});
@@ -348,6 +349,11 @@ class _GoogleMapsUIWidgetState extends State<GoogleMapsUIWidget> {
       }
     });
     
-    return WebViewWidget(controller: _controller);
+    return Stack(
+      children: [
+        WebViewWidget(controller: _controller),
+        const PinnedFriendsOverlay(),
+      ],
+    );
   }
 }

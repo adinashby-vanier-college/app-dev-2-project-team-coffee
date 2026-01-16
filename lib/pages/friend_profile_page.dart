@@ -6,6 +6,10 @@ import '../services/locations_service.dart';
 import '../models/location_details.dart';
 import '../widgets/location_preview_card.dart';
 import '../widgets/location_detail_sheet.dart';
+import '../services/friends_service.dart';
+import '../services/user_profile_service.dart';
+import '../services/chat_service.dart';
+import 'conversation_detail_page.dart';
 
 class FriendProfilePage extends StatefulWidget {
   final UserModel user;
@@ -19,6 +23,11 @@ class FriendProfilePage extends StatefulWidget {
 class _FriendProfilePageState extends State<FriendProfilePage> {
   final SavedLocationsService _savedLocationsService = SavedLocationsService();
   final LocationsService _locationsService = LocationsService();
+  final FriendsService _friendsService = FriendsService();
+  final UserProfileService _userProfileService = UserProfileService();
+  final ChatService _chatService = ChatService();
+  bool _isPinned = false;
+  bool _isLoadingPinStatus = true;
 
   Future<void> _openLocation(String locationId) async {
     // Show loading indicator or simple visual feedback could be nice, 
@@ -86,11 +95,164 @@ class _FriendProfilePageState extends State<FriendProfilePage> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    _checkPinStatus();
+  }
+
+  Future<void> _checkPinStatus() async {
+    try {
+      final pinnedFriends = await _userProfileService.getPinnedFriends();
+      setState(() {
+        _isPinned = pinnedFriends.contains(widget.user.uid);
+        _isLoadingPinStatus = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoadingPinStatus = false;
+      });
+    }
+  }
+
+  Future<void> _togglePinFriend() async {
+    try {
+      if (_isPinned) {
+        await _userProfileService.unpinFriend(widget.user.uid);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('${widget.user.name ?? widget.user.email ?? 'Friend'} unpinned from home map')),
+          );
+        }
+      } else {
+        await _userProfileService.pinFriend(widget.user.uid);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('${widget.user.name ?? widget.user.email ?? 'Friend'} pinned to home map')),
+          );
+        }
+      }
+      setState(() {
+        _isPinned = !_isPinned;
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _startChat() async {
+    try {
+      final conversationId = await _chatService.getOrCreateConversation(widget.user.uid);
+      
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ConversationDetailPage(
+              conversationId: conversationId,
+              otherUser: widget.user,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error starting chat: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _unfriend() async {
+    // Show confirmation dialog
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Unfriend'),
+        content: Text('Are you sure you want to remove ${widget.user.name ?? widget.user.email ?? 'this user'} from your friends?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Unfriend'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) {
+      return;
+    }
+
+    try {
+      await _friendsService.unfriend(widget.user.uid);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${widget.user.name ?? widget.user.email ?? 'User'} has been removed from your friends')),
+        );
+        // Navigate back after unfriending
+        Navigator.of(context).pop();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.user.displayName ?? 'Friend Profile'),
         centerTitle: true,
+        actions: [
+          PopupMenuButton<String>(
+            onSelected: (value) {
+              if (value == 'pin') {
+                _togglePinFriend();
+              } else if (value == 'unfriend') {
+                _unfriend();
+              }
+            },
+            itemBuilder: (BuildContext context) => [
+              PopupMenuItem<String>(
+                value: 'pin',
+                enabled: !_isLoadingPinStatus,
+                child: Row(
+                  children: [
+                    Icon(
+                      _isPinned ? Icons.push_pin : Icons.push_pin_outlined,
+                      color: _isPinned ? Colors.orange : null,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(_isPinned ? 'Unpin from home map' : 'Pin friend to home map'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem<String>(
+                value: 'unfriend',
+                child: Row(
+                  children: [
+                    Icon(Icons.person_remove, color: Colors.red),
+                    SizedBox(width: 8),
+                    Text('Unfriend', style: TextStyle(color: Colors.red)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
@@ -132,6 +294,16 @@ class _FriendProfilePageState extends State<FriendProfilePage> {
                 style: TextStyle(
                   fontSize: 16,
                   color: Colors.grey.shade600,
+                ),
+              ),
+              const SizedBox(height: 24),
+              // Chat Button
+              ElevatedButton.icon(
+                onPressed: _startChat,
+                icon: const Icon(Icons.chat),
+                label: const Text('Open Chat'),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                 ),
               ),
               const SizedBox(height: 40),

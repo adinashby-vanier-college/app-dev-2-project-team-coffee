@@ -255,45 +255,75 @@ class NotificationManager extends ChangeNotifier {
     final user = _auth.currentUser;
     if (user == null) return;
 
-    debugPrint('NotificationManager: Setting up moments listener...');
+    debugPrint('NotificationManager: Setting up moments listener for user ${user.uid}...');
 
     _momentsSubscription = _firestore
         .collection('moments')
         .where('invitedFriends', arrayContains: user.uid)
         .snapshots()
         .listen((snapshot) async {
-      // Check for document changes - only process new documents
+      debugPrint('NotificationManager: Moments snapshot received - ${snapshot.docChanges.length} changes, ${snapshot.docs.length} total docs');
+      
+      // On first load, mark all existing documents as known BEFORE processing changes
+      if (_knownMomentInviteIds.isEmpty) {
+        debugPrint('NotificationManager: First load - marking existing moments as known');
+        for (final doc in snapshot.docs) {
+          _knownMomentInviteIds.add(doc.id);
+        }
+        debugPrint('NotificationManager: Marked ${_knownMomentInviteIds.length} existing moment invites as known');
+      }
+      
+      // Process document changes - check for new invites
       for (final change in snapshot.docChanges) {
         final momentId = change.doc.id;
+        debugPrint('NotificationManager: Processing change - type: ${change.type}, momentId: $momentId');
         
-        // Only process new documents that were added
+        // Process added documents (new moments where user is invited, or existing moments where user was just added)
         if (change.type == DocumentChangeType.added) {
           // Skip if we've already processed this moment
-          if (_knownMomentInviteIds.contains(momentId)) continue;
+          if (_knownMomentInviteIds.contains(momentId)) {
+            debugPrint('NotificationManager: Moment $momentId already known, skipping');
+            continue;
+          }
 
           final momentData = change.doc.data();
           if (momentData == null) {
+            debugPrint('NotificationManager: Moment $momentId has no data, marking as known');
             _knownMomentInviteIds.add(momentId);
             continue;
           }
           
           final createdBy = momentData['createdBy'] as String?;
           final title = momentData['title'] as String? ?? 'A moment';
+          final invitedFriends = momentData['invitedFriends'] as List<dynamic>? ?? [];
+          
+          debugPrint('NotificationManager: Moment $momentId - createdBy: $createdBy, title: $title, invitedFriends: $invitedFriends');
+          
+          // Double-check that user is actually in invitedFriends
+          if (!invitedFriends.contains(user.uid)) {
+            debugPrint('NotificationManager: User not in invitedFriends for moment $momentId, skipping');
+            _knownMomentInviteIds.add(momentId);
+            continue;
+          }
           
           // Check if this moment was created after our initialization time
           final createdAt = (momentData['createdAt'] as Timestamp?)?.toDate();
           if (createdAt != null && createdAt.isBefore(_initializationTime)) {
             // Old moment, mark as known but don't notify
+            debugPrint('NotificationManager: Moment $momentId is old (created ${createdAt}), marking as known');
             _knownMomentInviteIds.add(momentId);
             continue;
           }
           
           if (createdBy == null || createdBy == user.uid) {
             // Don't notify for own moments
+            debugPrint('NotificationManager: Moment $momentId is own moment or no creator, marking as known');
             _knownMomentInviteIds.add(momentId);
             continue;
           }
 
+          debugPrint('NotificationManager: Creating notification for moment $momentId from $createdBy');
+          
           // Get creator name
           String creatorName = 'Someone';
           try {
@@ -302,40 +332,54 @@ class NotificationManager extends ChangeNotifier {
                          creatorProfile?.displayName ?? 
                          creatorProfile?.email?.split('@').first ?? 
                          'Someone';
+            debugPrint('NotificationManager: Creator name resolved: $creatorName');
           } catch (e) {
             debugPrint('NotificationManager: Error getting creator profile: $e');
           }
 
-          await _notificationService.showNotification(
-            'New Moment Invite',
-            '$creatorName invited you to "$title"',
-            type: 'moment_invite',
-            data: {
-              'momentId': momentId,
-              'creatorId': createdBy,
-            },
-          );
+          try {
+            await _notificationService.showNotification(
+              'New Moment Invite',
+              '$creatorName invited you to "$title"',
+              type: 'moment_invite',
+              data: {
+                'momentId': momentId,
+                'creatorId': createdBy,
+              },
+            );
+            debugPrint('NotificationManager: Successfully created notification for moment $momentId');
+          } catch (e) {
+            debugPrint('NotificationManager: Error creating notification: $e');
+          }
 
           _knownMomentInviteIds.add(momentId);
-          debugPrint('NotificationManager: Created notification for moment $momentId');
         } else if (change.type == DocumentChangeType.modified) {
-          // Check if the user was just added to invitedFriends
-          // This handles the case where a moment is updated with new invites
+          // Modified documents - check if user was just added to invitedFriends
+          // Note: This case is less common because when arrayUnion adds a user, 
+          // if the document wasn't matching the query before, it appears as "added"
           final momentData = change.doc.data();
-          if (momentData == null) continue;
+          if (momentData == null) {
+            debugPrint('NotificationManager: Modified moment $momentId has no data');
+            continue;
+          }
           
           final invitedFriends = momentData['invitedFriends'] as List<dynamic>? ?? [];
+          debugPrint('NotificationManager: Modified moment $momentId - invitedFriends: $invitedFriends');
           
           // If user is in invitedFriends and we haven't processed this moment yet
           if (invitedFriends.contains(user.uid) && !_knownMomentInviteIds.contains(momentId)) {
+            debugPrint('NotificationManager: User added to modified moment $momentId');
             final createdBy = momentData['createdBy'] as String?;
             final title = momentData['title'] as String? ?? 'A moment';
             
             if (createdBy == null || createdBy == user.uid) {
+              debugPrint('NotificationManager: Modified moment $momentId is own moment, marking as known');
               _knownMomentInviteIds.add(momentId);
               continue;
             }
 
+            debugPrint('NotificationManager: Creating notification for modified moment $momentId from $createdBy');
+            
             // Get creator name
             String creatorName = 'Someone';
             try {
@@ -348,29 +392,27 @@ class NotificationManager extends ChangeNotifier {
               debugPrint('NotificationManager: Error getting creator profile: $e');
             }
 
-            await _notificationService.showNotification(
-              'New Moment Invite',
-              '$creatorName invited you to "$title"',
-              type: 'moment_invite',
-              data: {
-                'momentId': momentId,
-                'creatorId': createdBy,
-              },
-            );
+            try {
+              await _notificationService.showNotification(
+                'New Moment Invite',
+                '$creatorName invited you to "$title"',
+                type: 'moment_invite',
+                data: {
+                  'momentId': momentId,
+                  'creatorId': createdBy,
+                },
+              );
+              debugPrint('NotificationManager: Successfully created notification for modified moment $momentId');
+            } catch (e) {
+              debugPrint('NotificationManager: Error creating notification for modified moment: $e');
+            }
 
             _knownMomentInviteIds.add(momentId);
-            debugPrint('NotificationManager: Created notification for moment $momentId (via modification)');
           }
         }
       }
-      
-      // On first load, mark all existing documents as known
-      if (_knownMomentInviteIds.isEmpty) {
-        for (final doc in snapshot.docs) {
-          _knownMomentInviteIds.add(doc.id);
-        }
-        debugPrint('NotificationManager: Marked ${_knownMomentInviteIds.length} existing moment invites as known');
-      }
+    }, onError: (error) {
+      debugPrint('NotificationManager: Error in moments listener: $error');
     });
   }
 

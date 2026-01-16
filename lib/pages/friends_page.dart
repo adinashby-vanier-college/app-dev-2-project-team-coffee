@@ -162,6 +162,47 @@ class _FriendsPageState extends State<FriendsPage> {
     }
   }
 
+  Future<void> _unfriend(UserModel friend) async {
+    // Show confirmation dialog
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Unfriend'),
+        content: Text('Are you sure you want to remove ${friend.name ?? friend.email ?? 'this user'} from your friends?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Unfriend'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) {
+      return;
+    }
+
+    try {
+      await _friendsService.unfriend(friend.uid);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${friend.name ?? friend.email ?? 'User'} has been removed from your friends')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    }
+  }
+
   Widget _buildFriendRequestTile(FriendRequest request, UserModel? fromUser) {
     final displayName = fromUser?.name ?? fromUser?.email ?? 'Unknown User';
     final initial = displayName.isNotEmpty ? displayName[0].toUpperCase() : '?';
@@ -217,10 +258,35 @@ class _FriendsPageState extends State<FriendsPage> {
         ),
         title: Text(displayName),
         subtitle: Text(friend.email ?? ''),
-        trailing: IconButton(
-          icon: const Icon(Icons.chat),
-          onPressed: () => _startChat(friend),
-          tooltip: 'Start chat',
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: const Icon(Icons.chat),
+              onPressed: () => _startChat(friend),
+              tooltip: 'Start chat',
+            ),
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert),
+              onSelected: (value) {
+                if (value == 'unfriend') {
+                  _unfriend(friend);
+                }
+              },
+              itemBuilder: (BuildContext context) => [
+                const PopupMenuItem<String>(
+                  value: 'unfriend',
+                  child: Row(
+                    children: [
+                      Icon(Icons.person_remove, color: Colors.red),
+                      SizedBox(width: 8),
+                      Text('Unfriend', style: TextStyle(color: Colors.red)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
         onTap: () {
           Navigator.push(
