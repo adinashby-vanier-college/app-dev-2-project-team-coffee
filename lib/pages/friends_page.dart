@@ -28,11 +28,37 @@ class _FriendsPageState extends State<FriendsPage> {
   final TextEditingController _searchController = TextEditingController();
   List<UserModel> _searchResults = [];
   bool _isSearching = false;
+  Set<String> _pinnedFriendIds = {};
+  bool _isLoadingPinnedFriends = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPinnedFriends();
+  }
 
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadPinnedFriends() async {
+    try {
+      final pinnedFriends = await _userProfileService.getPinnedFriends();
+      if (mounted) {
+        setState(() {
+          _pinnedFriendIds = pinnedFriends.toSet();
+          _isLoadingPinnedFriends = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoadingPinnedFriends = false;
+        });
+      }
+    }
   }
 
   void _onNavBarTap(BuildContext context, int index) {
@@ -193,6 +219,46 @@ class _FriendsPageState extends State<FriendsPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('${friend.name ?? friend.email ?? 'User'} has been removed from your friends')),
         );
+        setState(() {
+          _pinnedFriendIds.remove(friend.uid);
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _togglePinFriend(UserModel friend) async {
+    final isPinned = _pinnedFriendIds.contains(friend.uid);
+    try {
+      if (isPinned) {
+        await _userProfileService.unpinFriend(friend.uid);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('${friend.name ?? friend.email ?? 'Friend'} unpinned from home map')),
+          );
+        }
+      } else {
+        await _userProfileService.pinFriend(friend.uid);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('${friend.name ?? friend.email ?? 'Friend'} pinned to home map')),
+          );
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          if (isPinned) {
+            _pinnedFriendIds.remove(friend.uid);
+          } else {
+            _pinnedFriendIds.add(friend.uid);
+          }
+        });
       }
     } catch (e) {
       if (mounted) {
@@ -244,6 +310,7 @@ class _FriendsPageState extends State<FriendsPage> {
     final displayName = friend.name ?? friend.email ?? 'Unknown User';
     final initial = displayName.isNotEmpty ? displayName[0].toUpperCase() : '?';
     final photoURL = friend.photoURL;
+    final isPinned = _pinnedFriendIds.contains(friend.uid);
 
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 4.0),
@@ -269,11 +336,27 @@ class _FriendsPageState extends State<FriendsPage> {
             PopupMenuButton<String>(
               icon: const Icon(Icons.more_vert),
               onSelected: (value) {
-                if (value == 'unfriend') {
+                if (value == 'pin') {
+                  _togglePinFriend(friend);
+                } else if (value == 'unfriend') {
                   _unfriend(friend);
                 }
               },
               itemBuilder: (BuildContext context) => [
+                PopupMenuItem<String>(
+                  value: 'pin',
+                  enabled: !_isLoadingPinnedFriends,
+                  child: Row(
+                    children: [
+                      Icon(
+                        isPinned ? Icons.push_pin : Icons.push_pin_outlined,
+                        color: isPinned ? Colors.orange : null,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(isPinned ? 'Unpin from home map' : 'Pin friend to home map'),
+                    ],
+                  ),
+                ),
                 const PopupMenuItem<String>(
                   value: 'unfriend',
                   child: Row(
