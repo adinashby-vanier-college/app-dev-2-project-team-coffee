@@ -5,8 +5,15 @@ import '../widgets/google_maps_ui_widget.dart';
 import '../widgets/user_menu_widget.dart';
 import '../widgets/notification_bell.dart';
 
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
   const HomePage({super.key});
+
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  bool _isLocationModalOpen = false;
 
   void _onNavBarTap(BuildContext context, int index) {
     // Navigate based on selected index
@@ -26,8 +33,32 @@ class HomePage extends StatelessWidget {
     }
   }
 
+  void _handleModalVisibilityChanged(bool isOpen) {
+    if (isOpen != _isLocationModalOpen) {
+      setState(() => _isLocationModalOpen = isOpen);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final navBar = Align(
+      key: const ValueKey('home-nav-bar'),
+      alignment: Alignment.bottomCenter,
+      child: NavBar(
+        currentIndex: 0, // Home is at index 0
+        onTap: (index) => _onNavBarTap(context, index),
+        isFloating: true,
+        isOnDarkBackground: true,
+        activeColorOverride: const Color(0xFF00B030),
+        inactiveColorOverride: const Color(0xFF00B030),
+      ),
+    );
+
+    final mapsWidget = GoogleMapsUIWidget(
+      key: const ValueKey('home-maps'),
+      onModalVisibilityChanged: _handleModalVisibilityChanged,
+    );
+
     return Scaffold(
       extendBody: true,
       extendBodyBehindAppBar: true,
@@ -62,14 +93,16 @@ class HomePage extends StatelessWidget {
         ),
         centerTitle: false,
       ),
-      body: const GoogleMapsUIWidget(),
-      bottomNavigationBar: NavBar(
-        currentIndex: 0, // Home is at index 0
-        onTap: (index) => _onNavBarTap(context, index),
-        isFloating: true,
-        isOnDarkBackground: true,
-        activeColorOverride: Color(0xFF00B030),
-        inactiveColorOverride: Color(0xFF00B030),
+      body: Stack(
+        children: _isLocationModalOpen
+            ? [
+                navBar,
+                mapsWidget,
+              ]
+            : [
+                mapsWidget,
+                navBar,
+              ],
       ),
     );
   }

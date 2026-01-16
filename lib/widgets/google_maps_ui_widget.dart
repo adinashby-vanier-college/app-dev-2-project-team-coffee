@@ -15,7 +15,12 @@ import '../services/debug_service.dart';
 import 'pinned_friends_overlay.dart';
 
 class GoogleMapsUIWidget extends StatefulWidget {
-  const GoogleMapsUIWidget({super.key});
+  const GoogleMapsUIWidget({
+    super.key,
+    this.onModalVisibilityChanged,
+  });
+
+  final ValueChanged<bool>? onModalVisibilityChanged;
 
   @override
   State<GoogleMapsUIWidget> createState() => _GoogleMapsUIWidgetState();
@@ -27,6 +32,7 @@ class _GoogleMapsUIWidgetState extends State<GoogleMapsUIWidget> {
   final SavedLocationsService _savedLocationsService = SavedLocationsService();
   final LocationsService _locationsService = LocationsService();
   final FriendsService _friendsService = FriendsService();
+  bool _isModalVisible = false;
 
   @override
   void initState() {
@@ -107,6 +113,20 @@ class _GoogleMapsUIWidgetState extends State<GoogleMapsUIWidget> {
             debugPrint('LOG-WEBVIEW: ERROR sending scene: $e');
             debugPrint('LOG-WEBVIEW: Stack trace: $stackTrace');
           }
+        },
+      )
+      ..addJavaScriptChannel(
+        'FlutterLocationModalState',
+        onMessageReceived: (JavaScriptMessage message) {
+          if (!mounted) return;
+          final isOpen = message.message.trim().toLowerCase() == 'true';
+          if (isOpen == _isModalVisible) {
+            return;
+          }
+          setState(() {
+            _isModalVisible = isOpen;
+          });
+          widget.onModalVisibilityChanged?.call(isOpen);
         },
       )
       ..addJavaScriptChannel(
@@ -352,7 +372,7 @@ class _GoogleMapsUIWidgetState extends State<GoogleMapsUIWidget> {
     return Stack(
       children: [
         WebViewWidget(controller: _controller),
-        const PinnedFriendsOverlay(),
+        if (!_isModalVisible) const PinnedFriendsOverlay(),
       ],
     );
   }

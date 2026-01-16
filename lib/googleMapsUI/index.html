@@ -257,6 +257,13 @@ const App = () => {
   const touchStartRef = useRef(null);
 
   useEffect(() => {
+    const isModalOpen = Boolean(selectedLocation) || isSendSceneModalOpen;
+    if (window.FlutterLocationModalState) {
+      window.FlutterLocationModalState.postMessage(isModalOpen ? 'true' : 'false');
+    }
+  }, [selectedLocation, isSendSceneModalOpen]);
+
+  useEffect(() => {
     if (mapRef.current) {
       const updateViewState = () => {
         const viewportWidth = mapRef.current.clientWidth || 400;
