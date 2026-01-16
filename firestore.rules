@@ -155,7 +155,8 @@ service cloud.firestore {
       allow update: if isAuthenticated() && 
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['responses']) &&
         request.resource.data.responses is map &&
-        request.resource.data.responses[request.auth.uid] is string;
+        (request.resource.data.responses[request.auth.uid] is string ||
+         !(request.auth.uid in request.resource.data.responses));
       
       // Creator or invited friends can update invitedFriends or shareCode
       allow update: if isAuthenticated() && 

@@ -61,7 +61,7 @@ class MomentsService {
       createdAt: DateTime.now(),
       shareCode: shareCode,
       invitedFriends: invitedFriends,
-      responses: {user.uid: 'going'}, // Creator is automatically going
+      responses: const {},
       guestResponses: [],
     );
 
@@ -546,6 +546,23 @@ class MomentsService {
     });
 
     debugPrint('MomentsService: Updated response to $response for moment $momentId');
+  }
+
+  /// Removes RSVP response for the current user
+  Future<void> clearResponse(String momentId) async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      throw Exception('No authenticated user');
+    }
+
+    await _firestore
+        .collection(collectionName)
+        .doc(momentId)
+        .update({
+      'responses.${user.uid}': FieldValue.delete(),
+    });
+
+    debugPrint('MomentsService: Cleared response for moment $momentId');
   }
 
   /// Adds a guest response (from web form, non-app user)

@@ -47,6 +47,12 @@ class _MomentDetailPageState extends State<MomentDetailPage> {
     return currentUser != null && currentUser.uid == _moment.createdBy;
   }
 
+  String? get _currentUserResponse {
+    final currentUser = _auth.currentUser;
+    if (currentUser == null) return null;
+    return _moment.responses[currentUser.uid];
+  }
+
   @override
   void initState() {
     super.initState();
@@ -212,13 +218,24 @@ class _MomentDetailPageState extends State<MomentDetailPage> {
 
   Future<void> _updateMyResponse(String response) async {
     try {
-      await _momentsService.updateResponse(_moment.id, response);
+      final currentResponse = _currentUserResponse;
+      if (currentResponse == response) {
+        await _momentsService.clearResponse(_moment.id);
+      } else {
+        await _momentsService.updateResponse(_moment.id, response);
+      }
       // Refresh moment data
       final updated = await _momentsService.getMomentById(_moment.id);
       if (updated != null && mounted) {
         setState(() => _moment = updated);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('You\'re ${response == 'going' ? 'going' : response}!')),
+          SnackBar(
+            content: Text(
+              currentResponse == response
+                  ? 'Response cleared.'
+                  : 'You\'re ${response == 'going' ? 'going' : response}!',
+            ),
+          ),
         );
       }
     } catch (e) {
@@ -377,7 +394,7 @@ class _MomentDetailPageState extends State<MomentDetailPage> {
   }
 
   Widget _buildResponseButton(String response, String label, IconData icon, Color color) {
-    final isSelected = _moment.responses.containsValue(response);
+    final isSelected = _currentUserResponse == response;
     
     return Expanded(
       child: InkWell(
