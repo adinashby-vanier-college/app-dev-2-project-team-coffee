@@ -4,268 +4,59 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../providers/auth_provider.dart';
 import '../models/user_model.dart';
 import '../services/user_profile_service.dart';
-import '../services/notification_service.dart';
 import '../pages/landing_page.dart';
 import '../pages/profile_page.dart';
 import '../pages/settings_page.dart';
-import '../pages/notifications_page.dart';
 
-
-class _ProfileMenuItem extends StatefulWidget {
+class _MenuItem extends StatelessWidget {
+  final String label;
+  final IconData icon;
   final VoidCallback onTap;
+  final bool isDanger;
+  final bool isOnDarkBackground;
 
-  const _ProfileMenuItem({required this.onTap});
-
-  @override
-  State<_ProfileMenuItem> createState() => _ProfileMenuItemState();
-}
-
-class _ProfileMenuItemState extends State<_ProfileMenuItem> {
-  bool _isHovered = false;
+  const _MenuItem({
+    required this.label,
+    required this.icon,
+    required this.onTap,
+    this.isDanger = false,
+    this.isOnDarkBackground = false,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
+    final baseColor = isDanger
+        ? (isOnDarkBackground ? Colors.red.shade300 : Colors.red.shade600)
+        : (isOnDarkBackground
+            ? const Color(0xFFEDEDED)
+            : const Color(0xFF111111));
+    final hoverColor = isDanger
+        ? (isOnDarkBackground
+            ? Colors.redAccent.withOpacity(0.08)
+            : Colors.redAccent.withOpacity(0.08))
+        : (isOnDarkBackground
+            ? Colors.white.withOpacity(0.08)
+            : Colors.black.withOpacity(0.05));
+
+    return Material(
+      color: Colors.transparent,
       child: InkWell(
-        onTap: widget.onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 12,
-            vertical: 10,
-          ),
-          color: _isHovered ? Colors.blue.shade50 : Colors.transparent,
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        hoverColor: hoverColor,
+        splashColor: hoverColor,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           child: Row(
             children: [
-              Container(
-                width: 28,
-                height: 28,
-                decoration: BoxDecoration(
-                  color: _isHovered
-                      ? Colors.blue.shade100.withOpacity(0.5)
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(
-                  Icons.person,
-                  size: 15,
-                  color: _isHovered ? Colors.blue.shade500 : Colors.grey.shade400,
-                ),
-              ),
+              Icon(icon, size: 16, color: baseColor.withOpacity(0.8)),
               const SizedBox(width: 8),
               Text(
-                'Profile',
+                label,
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
-                  color: _isHovered ? Colors.blue.shade600 : Colors.black87,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _NotificationsMenuItem extends StatefulWidget {
-  final VoidCallback onTap;
-  final int unreadCount;
-
-  const _NotificationsMenuItem({required this.onTap, this.unreadCount = 0});
-
-  @override
-  State<_NotificationsMenuItem> createState() => _NotificationsMenuItemState();
-}
-
-class _NotificationsMenuItemState extends State<_NotificationsMenuItem> {
-  bool _isHovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
-      child: InkWell(
-        onTap: widget.onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 12,
-            vertical: 10,
-          ),
-          color: _isHovered ? Colors.blue.shade50 : Colors.transparent,
-          child: Row(
-            children: [
-              Stack(
-                children: [
-                  Container(
-                    width: 28,
-                    height: 28,
-                    decoration: BoxDecoration(
-                      color: _isHovered
-                          ? Colors.blue.shade100.withOpacity(0.5)
-                          : Colors.transparent,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(
-                      Icons.notifications,
-                      size: 15,
-                      color: _isHovered ? Colors.blue.shade500 : Colors.grey.shade400,
-                    ),
-                  ),
-                  if (widget.unreadCount > 0)
-                    Positioned(
-                      right: 0,
-                      top: 0,
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: const BoxDecoration(
-                          color: Colors.red,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Text(
-                          widget.unreadCount > 9 ? '9+' : '${widget.unreadCount}',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 8,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'Notifications',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: _isHovered ? Colors.blue.shade600 : Colors.black87,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _SettingsMenuItem extends StatefulWidget {
-  final VoidCallback onTap;
-
-  const _SettingsMenuItem({required this.onTap});
-
-  @override
-  State<_SettingsMenuItem> createState() => _SettingsMenuItemState();
-}
-
-class _SettingsMenuItemState extends State<_SettingsMenuItem> {
-  bool _isHovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
-      child: InkWell(
-        onTap: widget.onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 12,
-            vertical: 10,
-          ),
-          color: _isHovered ? Colors.blue.shade50 : Colors.transparent,
-          child: Row(
-            children: [
-              Container(
-                width: 28,
-                height: 28,
-                decoration: BoxDecoration(
-                  color: _isHovered
-                      ? Colors.blue.shade100.withOpacity(0.5)
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(
-                  Icons.settings,
-                  size: 15,
-                  color: _isHovered ? Colors.blue.shade500 : Colors.grey.shade400,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'Settings',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: _isHovered ? Colors.blue.shade600 : Colors.black87,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _LogoutMenuItem extends StatefulWidget {
-  final VoidCallback onTap;
-
-  const _LogoutMenuItem({required this.onTap});
-
-  @override
-  State<_LogoutMenuItem> createState() => _LogoutMenuItemState();
-}
-
-class _LogoutMenuItemState extends State<_LogoutMenuItem> {
-  bool _isHovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
-      child: InkWell(
-        onTap: widget.onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 12,
-            vertical: 10,
-          ),
-          color: _isHovered ? Colors.red.shade50 : Colors.transparent,
-          child: Row(
-            children: [
-              Container(
-                width: 28,
-                height: 28,
-                decoration: BoxDecoration(
-                  color: _isHovered
-                      ? Colors.red.shade100.withOpacity(0.5)
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(
-                  Icons.logout,
-                  size: 15,
-                  color: _isHovered ? Colors.red.shade500 : Colors.grey.shade400,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'Logout',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: _isHovered ? Colors.red.shade600 : Colors.black87,
+                  color: baseColor,
                 ),
               ),
             ],
@@ -277,7 +68,16 @@ class _LogoutMenuItemState extends State<_LogoutMenuItem> {
 }
 
 class UserMenuWidget extends StatefulWidget {
-  const UserMenuWidget({super.key});
+  final bool isOnDarkBackground;
+  final Color? iconColorOverride;
+  final Color? borderColorOverride;
+
+  const UserMenuWidget({
+    super.key,
+    this.isOnDarkBackground = false,
+    this.iconColorOverride,
+    this.borderColorOverride,
+  });
 
   @override
   State<UserMenuWidget> createState() => _UserMenuWidgetState();
@@ -285,6 +85,7 @@ class UserMenuWidget extends StatefulWidget {
 
 class _UserMenuWidgetState extends State<UserMenuWidget> {
   bool _isOpen = false;
+  bool _isPressed = false;
   OverlayEntry? _overlayEntry;
   UserModel? _userProfile;
   late final UserProfileService _userProfileService;
@@ -331,13 +132,6 @@ class _UserMenuWidgetState extends State<UserMenuWidget> {
     _closeMenu();
     Navigator.of(context).push(
       MaterialPageRoute(builder: (context) => const SettingsPage()),
-    );
-  }
-
-  void _handleNotifications() {
-    _closeMenu();
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (context) => const NotificationsPage()),
     );
   }
 
@@ -458,6 +252,10 @@ class _UserMenuWidgetState extends State<UserMenuWidget> {
   }
 
   Widget _buildMenu() {
+    final isOnDark = widget.isOnDarkBackground;
+    final backgroundColor = Colors.white;
+    final borderColor = Colors.black.withOpacity(0.08);
+
     return TweenAnimationBuilder<double>(
       duration: const Duration(milliseconds: 100),
       tween: Tween(begin: 0.0, end: 1.0),
@@ -474,17 +272,17 @@ class _UserMenuWidgetState extends State<UserMenuWidget> {
       child: Container(
         width: 160,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: backgroundColor,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: Colors.grey.shade100,
+            color: borderColor,
             width: 1,
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 40,
-              offset: const Offset(0, 10),
+              color: Colors.black.withOpacity(0.12),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
             ),
           ],
         ),
@@ -495,15 +293,28 @@ class _UserMenuWidgetState extends State<UserMenuWidget> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _ProfileMenuItem(
+                _MenuItem(
+                  label: 'Profile',
+                  icon: Icons.person,
                   onTap: _handleProfile,
+                isOnDarkBackground: false,
                 ),
-                _SettingsMenuItem(
+                _MenuItem(
+                  label: 'Settings',
+                  icon: Icons.settings,
                   onTap: _handleSettings,
+                isOnDarkBackground: false,
                 ),
-                Divider(height: 1, color: Colors.grey.shade200),
-                _LogoutMenuItem(
+                Divider(
+                  height: 1,
+                color: Colors.black.withOpacity(0.08),
+                ),
+                _MenuItem(
+                  label: 'Logout',
+                  icon: Icons.logout,
                   onTap: _handleLogout,
+                  isDanger: true,
+                isOnDarkBackground: false,
                 ),
               ],
             ),
@@ -515,79 +326,64 @@ class _UserMenuWidgetState extends State<UserMenuWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final iconColor = widget.iconColorOverride ??
+        (widget.isOnDarkBackground
+            ? const Color(0xFFEDEDED)
+            : const Color(0xFF111111));
+    final borderColor = widget.borderColorOverride ??
+        (widget.isOnDarkBackground
+            ? Colors.white.withOpacity(0.2)
+            : Colors.black.withOpacity(0.15));
+
     return GestureDetector(
+      onTapDown: (_) => setState(() => _isPressed = true),
+      onTapCancel: () => setState(() => _isPressed = false),
+      onTapUp: (_) => setState(() => _isPressed = false),
       onTap: _toggleMenu,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        width: 44,
-        height: 44,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          shape: BoxShape.circle,
-          border: Border.all(
-            color: _isOpen
-                ? Colors.grey.shade400
-                : Colors.grey.shade300,
-            width: 1,
-          ),
-          boxShadow: _isOpen
-              ? [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  ),
-                ]
-              : [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.07),
-                    blurRadius: 10,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-        ),
-        child: Stack(
-          children: [
-            Center(
-              child: ClipOval(
+      child: AnimatedScale(
+        duration: const Duration(milliseconds: 150),
+        scale: _isPressed ? 0.96 : (_isOpen ? 1.05 : 1.0),
+        child: SizedBox(
+          width: 40,
+          height: 40,
+          child: Center(
+            child: ClipOval(
+              child: SizedBox(
+                width: 32,
+                height: 32,
                 child: _userProfile != null &&
                         _userProfile!.photoURL != null &&
                         _userProfile!.photoURL!.isNotEmpty
-                    ? CachedNetworkImage(
-                        imageUrl: _userProfile!.photoURL!,
-                        width: 32,
-                        height: 32,
-                        fit: BoxFit.cover,
-                        errorWidget: (_, __, ___) => Icon(
-                          Icons.person,
-                          size: 18,
-                          color: Colors.grey.shade600,
+                    ? DecoratedBox(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: borderColor, width: 1),
+                        ),
+                        child: CachedNetworkImage(
+                          imageUrl: _userProfile!.photoURL!,
+                          fit: BoxFit.cover,
+                          errorWidget: (_, __, ___) => const Icon(
+                            Icons.person,
+                            size: 20,
+                            color: Color(0xFF00B030),
+                          ),
                         ),
                       )
                     : Icon(
                         Icons.person,
-                        size: 18,
-                        color: Colors.grey.shade600,
+                        size: 26,
+                        color: const Color(0xFF00B030),
+                        shadows: [
+                          Shadow(
+                            color: Colors.black.withOpacity(0.25),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                       ),
               ),
             ),
-            // Subtle shine effect
-            Positioned.fill(
-              child: Container(
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      Colors.black.withOpacity(0.02),
-                      Colors.transparent,
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );

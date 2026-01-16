@@ -37,11 +37,19 @@ class HomePage extends StatelessWidget {
         scrolledUnderElevation: 0,
         surfaceTintColor: Colors.transparent,
         actions: const [
-          NotificationBell(),
+          NotificationBell(
+            isOnDarkBackground: true,
+            iconColor: Color(0xFF00B030),
+            badgeColor: Color(0xFF00B030),
+          ),
           SizedBox(width: 8),
           Padding(
             padding: EdgeInsets.only(right: 8.0),
-            child: UserMenuWidget(),
+            child: UserMenuWidget(
+              isOnDarkBackground: true,
+              iconColorOverride: Color(0xFF00B030),
+              borderColorOverride: Color(0xFF00B030),
+            ),
           ),
         ],
         title: Padding(
@@ -58,8 +66,10 @@ class HomePage extends StatelessWidget {
       bottomNavigationBar: NavBar(
         currentIndex: 0, // Home is at index 0
         onTap: (index) => _onNavBarTap(context, index),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
+        isFloating: true,
+        isOnDarkBackground: true,
+        activeColorOverride: Color(0xFF00B030),
+        inactiveColorOverride: Color(0xFF00B030),
       ),
     );
   }
